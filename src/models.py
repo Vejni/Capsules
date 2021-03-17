@@ -1,14 +1,12 @@
-import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+
 from src.datasets import PatchWiseDataset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
-import torchvision
-import PIL
 
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
-import numpy as np
 import torch
 import copy
 import time
@@ -213,3 +211,70 @@ class PatchWiseModel(nn.Module):
 
         # load best model weights
         self.load_state_dict(best_model_wts)
+    
+    def plot_metrics(self):
+        # Loss
+        plt.plot(self.train_losses, label='Training loss')
+        plt.plot(self.valid_losses, label='Validation loss')
+        plt.xlabel("Epochs")
+        plt.ylabel("Loss")
+        plt.legend(frameon=False)
+
+        # Accuracy
+        plt.plot(self.train_acc, label='Training Accuracy')
+        plt.plot(self.val_acc, label='Validation Accuracy')
+        plt.xlabel("Epochs")
+        plt.ylabel("Acc")
+        plt.legend(frameon=False)
+
+    def test(self, data_path, args):
+        test_data_loader = DataLoader(
+            dataset=PatchWiseDataset(path=data_path + "/test"),
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.workers
+        )
+
+        super(PatchWiseModel, self).eval()
+        with torch.no_grad():
+            correct = 0
+            total = 0
+            for images, labels in test_data_loader:
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+                outputs = self(images)
+                _, predicted = torch.max(outputs.data, 1)
+                total += labels.size(0)
+                correct += (predicted == labels).sum().item()
+                
+        print('Test Accuracy of the model: {} %'.format(100 * correct / total))
+    
+    def test_separate_classes(self, data_path, args):
+        test_data_loader = DataLoader(
+            dataset=PatchWiseDataset(path=data_path + "/test"),
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.workers
+        )
+
+        class_correct = list(0. for i in range(3))
+        class_total = list(0. for i in range(3))
+
+        super(PatchWiseModel, self).eval()
+        with torch.no_grad():
+            for images, labels in test_data_loader:
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+                outputs = self(images)
+                _, predicted = torch.max(outputs, 1)
+                predicted = predicted.tolist()
+                labels = labels.tolist()
+                for i in range(len(predicted)):
+                    if predicted[i] == labels[i]:
+                        class_correct[predicted[i]] += 1
+                    class_total[labels[i]] += 1
+
+
+        for i in range(3):
+            print('Accuracy of %5s : %2d %%' % (
+                i, 100 * class_correct[i] / class_total[i]))
