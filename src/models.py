@@ -12,13 +12,15 @@ import torch
 import copy
 import time
 
+MEANS = [0.4731, 0.3757, 0.4117]
+STD = [0.3731, 0.3243, 0.3199]
 
 class PatchWiseModel(nn.Module):
     """
     TODO
     """
     def __init__(self, input_size, classes, channels, output_size):
-        super(self).__init__()
+        super(PatchWiseModel, self).__init__()
         self.input_size = input_size
         self.classes = classes
 
@@ -83,12 +85,15 @@ class PatchWiseModel(nn.Module):
         )
 
         self.classifier = nn.Sequential(
-            nn.Linear(channels * output_size[0] * output_size[0], classes),
+            nn.Linear(channels * output_size[1] * output_size[2], classes),
         )
 
-        self.relu = nn.ReLU()
         self.initialize_weights()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+        super(PatchWiseModel, self).print()
+        print("Parameters:", sum(p.numel() for p in super(PatchWiseModel, self).parameters()))
+        print("Trainable parameters:", sum(p.numel() for p in super(PatchWiseModel, self).parameters() if p.requires_grad))
 
     def initialize_weights(self):
         for m in self.modules():
@@ -112,7 +117,7 @@ class PatchWiseModel(nn.Module):
         x = F.log_softmax(x, dim=1)
         return x
 
-    def train(self, data_path, batch_size, args):
+    def train(self, data_path, args):
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         training_transforms = transforms.Compose([
@@ -120,23 +125,21 @@ class PatchWiseModel(nn.Module):
             transforms.RandomVerticalFlip(),
             transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.4722, 0.3740, 0.4111],
-                                std=[0.3617, 0.3007, 0.3099])
+            transforms.Normalize(mean=MEANS, std=STD)
         ])
 
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.4722, 0.3740, 0.4111],
-                                std=[0.3617, 0.3007, 0.3099])
+            transforms.Normalize(mean=MEANS, std=STD)
         ])
 
         training_data = torchvision.datasets.ImageFolder(root=data_path + "/train", transform=training_transforms)
-        train_data_loader = DataLoader(training_data, batch_size=batch_size, shuffle=True,  num_workers=2, drop_last=True)
+        train_data_loader = DataLoader(training_data, batch_size=args.batch_size, shuffle=True,  num_workers=2, drop_last=True)
 
-        validation_data = torchvision.datasets.ImageFolder(root=data_path + "/validation", transform=training_transforms)
-        val_data_loader = DataLoader(validation_data, batch_size=batch_size, shuffle=True,  num_workers=2, drop_last=True)
+        validation_data = torchvision.datasets.ImageFolder(root=data_path + "/validation", transform=validation_transforms)
+        val_data_loader = DataLoader(validation_data, batch_size=args.batch_size, shuffle=True,  num_workers=2, drop_last=True)
 
-        optimizer = optim.Adam(self.network.parameters(), lr=self.args.lr, betas=(self.args.beta1, self.args.beta2))
+        optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
         criterion = nn.CrossEntropyLoss()
 
@@ -157,11 +160,10 @@ class PatchWiseModel(nn.Module):
             # Each epoch has a training and validation phase
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    super(self).train()  # Set model to training mode
-                    scheduler.step()
+                    super(PatchWiseModel, self).train()  # Set model to training mode
                     dataloader = train_data_loader
                 else:
-                    super(self).eval()   # Set model to evaluate mode
+                    super(PatchWiseModel, self).eval()   # Set model to evaluate mode
                     dataloader = val_data_loader
 
                 running_loss = 0.0

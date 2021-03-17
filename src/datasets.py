@@ -1,4 +1,4 @@
-from torch.utils.data import Subset, DataLoader
+from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 import numpy as np
@@ -10,16 +10,20 @@ import glob
 import PIL
 import os
 
+from torchvision.transforms.transforms import Resize
+import matplotlib.pyplot as plt
+
+
 VALIDATION_SET = 0.15
 TRAINING_SET = 0.7
 TEST_SET = 0.15
 
-PATCH_SIZE = 512
+IMAGE_SIZE = (1536, 2048)
 LABELS = ["Grade 1", "Grade 2", "Grade 3"]
 SEED = 123
 
 
-def set_seed(seed):
+def set_seed(seed=SEED):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
     torch.manual_seed(seed)
@@ -35,10 +39,11 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
     BATCH_SIZE = 1
 
     t = transforms.Compose([
+        transforms.Resize(IMAGE_SIZE),
         transforms.ToTensor()
     ])
 
-    data = torchvision.datasets.ImageFolder(root=root_dir, transform=t)
+    data = torchvision.datasets.ImageFolder(root=root_dir+"/Histopathological_Graded", transform=t)
 
     train_size = int(training_set*len(data))
     val_size = int(val_set*len(data))
@@ -59,13 +64,34 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
             if not os.path.exists(root_dir + "/" + t + "/" + str(i)):
                 os.makedirs(root_dir + "/" + t + "/" + str(i))
 
+    # Compute normalization metrics
+    mean = 0.
+    std = 0.
+
     # Training images
     i = 0
     for inputs, labels in tqdm(train_data_loader):
         input = inputs[0]
+
+        temp = input.view(3, -1)
+        mean += temp.mean(1)
+        std += temp.std(1)
+
         torchvision.utils.save_image(input, root_dir + "/train/" + str(labels[0].item()) + "/" + str(i) + ".JPG")
         i += 1
     
+    # Validation images
+    i = 0
+    for inputs, labels in tqdm(val_data_loader):
+        input = inputs[0]
+
+        temp = input.view(3, -1)
+        mean += temp.mean(1)
+        std += temp.std(1)
+
+        torchvision.utils.save_image(input, root_dir + "/validation/" + str(labels[0].item()) + "/" + str(i) + ".JPG")
+        i += 1
+
     # Test images
     i = 0
     for inputs, labels in tqdm(test_data_loader):
@@ -73,9 +99,10 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         torchvision.utils.save_image(input, root_dir + "/test/" + str(labels[0].item()) + "/" + str(i) + ".JPG")
         i += 1
     
-    # Validation images
-    i = 0
-    for inputs, labels in tqdm(test_data_loader):
-        input = inputs[0]
-        torchvision.utils.save_image(input, root_dir + "/validation/" + str(labels[0].item()) + "/" + str(i) + ".JPG")
-        i += 1
+    print("Printing Normalization Metrics")
+    mean /= (train_size + val_size)
+    std /= (train_size + val_size)
+    print("Means:", mean)
+    print("Std:", std)
+
+split_test_train_val("C:\Marci\Suli\Dissertation\Repository\data")
