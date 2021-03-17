@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 
-from src.datasets import PatchWiseDataset
+from .datasets import PatchWiseDataset
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 

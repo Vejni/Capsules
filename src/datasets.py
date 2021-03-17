@@ -10,7 +10,7 @@ import torch
 import glob
 import os
 
-from src.patching import PatchExtractor
+from .patching import PatchExtractor
 
 VALIDATION_SET = 0.15
 TRAINING_SET = 0.7
