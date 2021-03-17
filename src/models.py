@@ -90,6 +90,7 @@ class PatchWiseModel(nn.Module):
         print(self)
         print("Parameters:", sum(p.numel() for p in super(PatchWiseModel, self).parameters()))
         print("Trainable parameters:", sum(p.numel() for p in super(PatchWiseModel, self).parameters() if p.requires_grad))
+        print("Using:", self.device)
 
     def initialize_weights(self):
         for m in self.modules():
@@ -113,18 +114,18 @@ class PatchWiseModel(nn.Module):
         x = F.log_softmax(x, dim=1)
         return x
 
-    def train(self, data_path, args):
+    def train(self, args):
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         train_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=data_path + "/train", rotate=args.augment, flip=args.augment, enhance=args.augment),
+            dataset=PatchWiseDataset(path=args.data_path + "/train", rotate=args.augment, flip=args.augment, enhance=args.augment),
             batch_size=args.batch_size,
             shuffle=True,
             num_workers=args.workers
         )
 
         val_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=data_path + "/validation"),
+            dataset=PatchWiseDataset(path=args.data_path + "/validation"),
             batch_size=args.batch_size,
             shuffle=True,
             num_workers=args.workers
@@ -227,9 +228,9 @@ class PatchWiseModel(nn.Module):
         plt.ylabel("Acc")
         plt.legend(frameon=False)
 
-    def test(self, data_path, args):
+    def test(self, args):
         test_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=data_path + "/test"),
+            dataset=PatchWiseDataset(path=args.data_path + "/test"),
             batch_size=args.batch_size,
             shuffle=True,
             num_workers=args.workers
@@ -249,9 +250,9 @@ class PatchWiseModel(nn.Module):
                 
         print('Test Accuracy of the model: {} %'.format(100 * correct / total))
     
-    def test_separate_classes(self, data_path, args):
+    def test_separate_classes(self, args):
         test_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=data_path + "/test"),
+            dataset=PatchWiseDataset(path=args.data_path + "/test"),
             batch_size=args.batch_size,
             shuffle=True,
             num_workers=args.workers
