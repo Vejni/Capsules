@@ -1,27 +1,30 @@
 from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
 from torch.utils.data import Dataset
+from PIL import Image, ImageEnhance
 import numpy as np
 import torchvision
 import random
 import torch
 import torch
 import glob
-import PIL
 import os
 
-from torchvision.transforms.transforms import Resize
-import matplotlib.pyplot as plt
-
+from src.patching import PatchExtractor
 
 VALIDATION_SET = 0.15
 TRAINING_SET = 0.7
 TEST_SET = 0.15
 
+MEANS = [0.4731, 0.3757, 0.4117]
+STD = [0.3731, 0.3243, 0.3199]
+
 IMAGE_SIZE = (1536, 2048)
 LABELS = ["Grade 1", "Grade 2", "Grade 3"]
 SEED = 123
 
+PATCH_SIZE = 512
+STRIDE = 256
 
 def set_seed(seed=SEED):
     torch.backends.cudnn.deterministic = True
@@ -60,9 +63,9 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         os.makedirs(root_dir)
 
     for t in ["train", "test", "validation"]:
-        for i in range(3):
-            if not os.path.exists(root_dir + "/" + t + "/" + str(i)):
-                os.makedirs(root_dir + "/" + t + "/" + str(i))
+        for i in range(len(LABELS)):
+            if not os.path.exists(root_dir + "/" + t + "/" + LABELS[i]):
+                os.makedirs(root_dir + "/" + t + "/" + LABELS[i])
 
     # Compute normalization metrics
     mean = 0.
@@ -77,7 +80,7 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         mean += temp.mean(1)
         std += temp.std(1)
 
-        torchvision.utils.save_image(input, root_dir + "/train/" + str(labels[0].item()) + "/" + str(i) + ".JPG")
+        torchvision.utils.save_image(input, root_dir + "/train/" + LABELS[labels[0].item()] + "/" + str(i) + ".JPG")
         i += 1
     
     # Validation images
@@ -89,14 +92,14 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         mean += temp.mean(1)
         std += temp.std(1)
 
-        torchvision.utils.save_image(input, root_dir + "/validation/" + str(labels[0].item()) + "/" + str(i) + ".JPG")
+        torchvision.utils.save_image(input, root_dir + "/validation/" + LABELS[labels[0].item()] + "/" + str(i) + ".JPG")
         i += 1
 
     # Test images
     i = 0
     for inputs, labels in tqdm(test_data_loader):
         input = inputs[0]
-        torchvision.utils.save_image(input, root_dir + "/test/" + str(labels[0].item()) + "/" + str(i) + ".JPG")
+        torchvision.utils.save_image(input, root_dir + "/test/" + LABELS[labels[0].item()] + "/" + str(i) + ".JPG")
         i += 1
     
     print("Printing Normalization Metrics")
@@ -105,4 +108,47 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
     print("Means:", mean)
     print("Std:", std)
 
-split_test_train_val("C:\Marci\Suli\Dissertation\Repository\data")
+class PatchWiseDataset(Dataset):
+    def __init__(self, path, stride=STRIDE, rotate=False, flip=False, enhance=False):
+        super().__init__()
+
+        wp = int((IMAGE_SIZE[0] - PATCH_SIZE) / stride + 1)
+        hp = int((IMAGE_SIZE[1] - PATCH_SIZE) / stride + 1)
+        labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.JPG')}
+
+        self.path = path
+        self.stride = stride
+        self.labels = labels
+        self.names = list(sorted(labels.keys()))
+        self.shape = (len(labels), wp, hp, (4 if rotate else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
+        self.augment_size = np.prod(self.shape) / len(labels)
+
+        self.transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
+
+    def __getitem__(self, index):
+        im, xpatch, ypatch, rotation, flip, enhance = np.unravel_index(index, self.shape)
+
+        with Image.open(self.names[im]) as img:
+            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
+            patch = extractor.extract_patch((xpatch, ypatch))
+
+            if rotation != 0:
+                patch = patch.rotate(rotation * 90)
+
+            if flip != 0:
+                patch = patch.transpose(Image.FLIP_LEFT_RIGHT)
+
+            if enhance != 0:
+                factors = np.random.uniform(.5, 1.5, 3)
+                patch = ImageEnhance.Color(patch).enhance(factors[0])
+                patch = ImageEnhance.Contrast(patch).enhance(factors[1])
+                patch = ImageEnhance.Brightness(patch).enhance(factors[2])
+
+            label = self.labels[self.names[im]]
+            return self.transforms(patch), label
+
+    def __len__(self):
+        return np.prod(self.shape)
