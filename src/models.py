@@ -86,6 +86,7 @@ class PatchWiseModel(nn.Module):
 
         self.initialize_weights()
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.to(self.device)
 
         print(self)
         print("Parameters:", sum(p.numel() for p in super(PatchWiseModel, self).parameters()))
