@@ -7,10 +7,8 @@ from torch.utils.data import DataLoader
 from .datasets import MEANS, STD
 from tqdm import tqdm
 import torchvision
-import numpy as np
 import PIL
 
-import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
 import torch
