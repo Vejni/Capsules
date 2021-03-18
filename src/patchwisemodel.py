@@ -10,6 +10,7 @@ import torch.nn as nn
 import torch
 import copy
 import time
+import os
 
 class PatchWiseModel(nn.Module):
     """
@@ -280,3 +281,16 @@ class PatchWiseModel(nn.Module):
         for i in range(3):
             print('Accuracy of %5s : %2d %%' % (
                 i, 100 * class_correct[i] / class_total[i]))
+    
+    def save_model(self, path):
+        torch.save(self.state_dict(), path + "patchwise_network_" + str(time.strftime('%Y/%m/%d %H:%M')) + "ckpt")
+        print("Model saved:", path + "patchwise_network_" + str(time.strftime('%Y/%m/%d %H:%M')) + "ckpt")
+        return path + "patchwise_network_" + str(time.strftime('%Y/%m/%d %H:%M')) + "ckpt"
+    
+    def load(self, path):
+        try:
+            if os.path.exists(path):
+                print('Loading "patch-wise" model...')
+                self.load_state_dict(torch.load(path))
+        except:
+            print('Failed to load pre-trained network with path:', path)

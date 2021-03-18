@@ -152,3 +152,52 @@ class PatchWiseDataset(Dataset):
 
     def __len__(self):
         return np.prod(self.shape)
+
+class ImageWiseDataset(Dataset):
+    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False, enhance=False):
+        super().__init__()
+
+        labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.JPG')}
+
+        self.path = path
+        self.stride = stride
+        self.labels = labels
+        self.names = list(sorted(labels.keys()))
+        self.shape = (len(labels), (4 if rotate else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
+        self.augment_size = np.prod(self.shape) / len(labels)
+
+        self.transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
+
+    def __getitem__(self, index):
+        im, rotation, flip, enhance = np.unravel_index(index, self.shape)
+
+        with Image.open(self.names[im]) as img:
+
+            if flip != 0:
+                img = img.transpose(Image.FLIP_LEFT_RIGHT)
+
+            if rotation != 0:
+                img = img.rotate(rotation * 90)
+
+            if enhance != 0:
+                factors = np.random.uniform(.5, 1.5, 3)
+                img = ImageEnhance.Color(img).enhance(factors[0])
+                img = ImageEnhance.Contrast(img).enhance(factors[1])
+                img = ImageEnhance.Brightness(img).enhance(factors[2])
+
+            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
+            patches = extractor.extract_patches()
+
+            label = self.labels[self.names[im]]
+
+            b = torch.zeros((len(patches), 3, PATCH_SIZE, PATCH_SIZE))
+            for i in range(len(patches)):
+                b[i] = self.transforms(patches[i])
+
+            return b, label
+
+    def __len__(self):
+        return np.prod(self.shape)
