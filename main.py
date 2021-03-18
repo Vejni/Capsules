@@ -17,7 +17,6 @@ if __name__ == "__main__":
     )
 
     args_img_wise = Namespace(
-        batch_size=1,
         lr=0.0001,
         epochs=1,
         augment=True,

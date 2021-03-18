@@ -18,6 +18,8 @@ import copy
 import time
 import os
 
+BATCH_SIZE = 12
+
 class ImageWiseModels(nn.Module):
     def __init__(self, input_size, classes, channels, output_size, patchwise_path):
         super(ImageWiseModels, self).__init__()
@@ -103,10 +105,10 @@ class BaseCNN(ImageWiseModels):
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ]))
-        train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
         super(BaseCNN, self).train()  # Set model to training mode
         data, _ = next(iter(train_data_loader))
-        data = data[0]
+        #data = data[0]
         x = data.to(self.device)
         x = self.patch_wise_model.features(x)
         x = self.cnn_layers(x)
@@ -140,8 +142,8 @@ class BaseCNN(ImageWiseModels):
         train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
 
-        train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
-        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
+        val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         criterion = nn.CrossEntropyLoss()
@@ -174,8 +176,6 @@ class BaseCNN(ImageWiseModels):
 
                 # Iterate over data.
                 for inputs, labels in tqdm(dataloader):
-                    inputs = inputs[0]
-                    labels = torch.Tensor([labels.item()] * inputs.size(0)).type(torch.LongTensor)
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
 
@@ -229,15 +229,13 @@ class BaseCNN(ImageWiseModels):
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ]))
-        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
+        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
 
         super(BaseCNN, self).eval()
         with torch.no_grad():
             correct = 0
             total = 0
             for inputs, labels in test_data_loader:
-                inputs = inputs[0]
-                labels = torch.Tensor([labels.item()] * inputs.size(0)).type(torch.LongTensor)
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
                 outputs = self(inputs)
