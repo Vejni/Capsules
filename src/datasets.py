@@ -1,5 +1,5 @@
-from torch.utils.data import DataLoader
 import torchvision.transforms as transforms
+from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 from PIL import Image, ImageEnhance
 import numpy as np
@@ -10,7 +10,7 @@ import torch
 import glob
 import os
 
-from .patching import PatchExtractor
+#from .patching import PatchExtractor
 
 VALIDATION_SET = 0.15
 TRAINING_SET = 0.7
@@ -26,6 +26,12 @@ SEED = 123
 PATCH_SIZE = 512
 STRIDE = 256
 
+def imshow(img):
+    import matplotlib.pyplot as plt
+    npimg = img.numpy()
+    plt.imshow(np.transpose(npimg, (1, 2, 0)))
+    plt.show()
+
 def set_seed(seed=SEED):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
@@ -34,6 +40,43 @@ def set_seed(seed=SEED):
     np.random.seed(seed)
     random.seed(seed)
 
+def compute_normalization_stats(root_dir,  test_set=TEST_SET, training_set=TRAINING_SET, val_set=VALIDATION_SET):
+    from tqdm import tqdm
+    set_seed(SEED)
+    assert test_set + training_set + val_set == 1, "Train/Test/Val Set sizes incorrect"
+    BATCH_SIZE = 1
+
+    t = transforms.Compose([
+        transforms.Resize(IMAGE_SIZE),
+        transforms.ToTensor()
+    ])
+
+    data = torchvision.datasets.ImageFolder(root=root_dir+"/Histopathological_Graded", transform=t)
+
+    size = int((training_set+val_set)*len(data))
+    test_size = len(data) - (size)
+    train_data, _ = torch.utils.data.random_split(data, [size, test_size])
+
+    data_loader = DataLoader(train_data, batch_size=BATCH_SIZE,  num_workers=0)
+    # Compute normalization metrics
+    mean = 0.
+    std = 0.
+
+    # Training images
+    i = 0
+    for inputs, _ in tqdm(data_loader):
+        input = inputs[0]
+
+        temp = input.view(3, -1)
+        mean += temp.mean(1)
+        std += temp.std(1)
+        i += 1
+
+    print("Printing Normalization Metrics")
+    mean /= size
+    std /= size
+    print("Means:", mean)
+    print("Std:", std)
 
 def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET, val_set=VALIDATION_SET):
     from tqdm import tqdm
@@ -62,142 +105,65 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
     if not os.path.exists(root_dir):
         os.makedirs(root_dir)
 
-    for t in ["train", "test", "validation"]:
-        for i in range(len(LABELS)):
-            if not os.path.exists(root_dir + "/" + t + "/" + LABELS[i]):
-                os.makedirs(root_dir + "/" + t + "/" + LABELS[i])
-
-    # Compute normalization metrics
-    mean = 0.
-    std = 0.
+    for mode in ["/imagewise_dataset/", "/patchwise_dataset/"]:
+        for t in ["train", "test", "validation"]:
+            for i in range(len(LABELS)):
+                if not os.path.exists(root_dir + mode + t + "/" + LABELS[i]):
+                    os.makedirs(root_dir + mode + t + "/" + LABELS[i])
 
     # Training images
     i = 0
     for inputs, labels in tqdm(train_data_loader):
         input = inputs[0]
-
-        temp = input.view(3, -1)
-        mean += temp.mean(1)
-        std += temp.std(1)
-
-        torchvision.utils.save_image(input, root_dir + "/train/" + LABELS[labels[0].item()] + "/" + str(i) + ".JPG")
+        # ImageWise
+        patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
+        patches = patches.permute(1,2,0,3,4).contiguous()
+        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+        for j, patch in enumerate(patches):
+            torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+        
+        # PatchWise
+        patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
+        patches = patches.permute(1,2,0,3,4).contiguous()
+        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+        for j, patch in enumerate(patches):
+            torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
         i += 1
-    
+
     # Validation images
     i = 0
     for inputs, labels in tqdm(val_data_loader):
         input = inputs[0]
-
-        temp = input.view(3, -1)
-        mean += temp.mean(1)
-        std += temp.std(1)
-
-        torchvision.utils.save_image(input, root_dir + "/validation/" + LABELS[labels[0].item()] + "/" + str(i) + ".JPG")
+        # ImageWise
+        patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
+        patches = patches.permute(1,2,0,3,4).contiguous()
+        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+        for j, patch in enumerate(patches):
+            torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+        
+        # PatchWise
+        patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
+        patches = patches.permute(1,2,0,3,4).contiguous()
+        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+        for j, patch in enumerate(patches):
+            torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
         i += 1
 
-    # Test images
+    # Test images - TODO
     i = 0
     for inputs, labels in tqdm(test_data_loader):
         input = inputs[0]
-        torchvision.utils.save_image(input, root_dir + "/test/" + LABELS[labels[0].item()] + "/" + str(i) + ".JPG")
+        # ImageWise
+        patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
+        patches = patches.permute(1,2,0,3,4).contiguous()
+        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+        for j, patch in enumerate(patches):
+            torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+        
+        # PatchWise
+        patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
+        patches = patches.permute(1,2,0,3,4).contiguous()
+        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+        for j, patch in enumerate(patches):
+            torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
         i += 1
-    
-    print("Printing Normalization Metrics")
-    mean /= (train_size + val_size)
-    std /= (train_size + val_size)
-    print("Means:", mean)
-    print("Std:", std)
-
-class PatchWiseDataset(Dataset):
-    def __init__(self, path, stride=STRIDE, rotate=False, flip=False, enhance=False):
-        super().__init__()
-
-        wp = int((IMAGE_SIZE[0] - PATCH_SIZE) / stride + 1)
-        hp = int((IMAGE_SIZE[1] - PATCH_SIZE) / stride + 1)
-        labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.JPG')}
-
-        self.path = path
-        self.stride = stride
-        self.labels = labels
-        self.names = list(sorted(labels.keys()))
-        self.shape = (len(labels), wp, hp, (4 if rotate else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
-        self.augment_size = np.prod(self.shape) / len(labels)
-
-        self.transforms = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ])
-
-    def __getitem__(self, index):
-        im, xpatch, ypatch, rotation, flip, enhance = np.unravel_index(index, self.shape)
-
-        with Image.open(self.names[im]) as img:
-            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
-            patch = extractor.extract_patch((xpatch, ypatch))
-
-            if rotation != 0:
-                patch = patch.rotate(rotation * 90)
-
-            if flip != 0:
-                patch = patch.transpose(Image.FLIP_LEFT_RIGHT)
-
-            if enhance != 0:
-                factors = np.random.uniform(.5, 1.5, 3)
-                patch = ImageEnhance.Color(patch).enhance(factors[0])
-                patch = ImageEnhance.Contrast(patch).enhance(factors[1])
-                patch = ImageEnhance.Brightness(patch).enhance(factors[2])
-
-            label = self.labels[self.names[im]]
-            return self.transforms(patch), label
-
-    def __len__(self):
-        return np.prod(self.shape)
-
-class ImageWiseDataset(Dataset):
-    def __init__(self, path, stride=PATCH_SIZE, rotate=False, flip=False, enhance=False):
-        super().__init__()
-
-        labels = {name: index for index in range(len(LABELS)) for name in glob.glob(path + '/' + LABELS[index] + '/*.JPG')}
-
-        self.path = path
-        self.stride = stride
-        self.labels = labels
-        self.names = list(sorted(labels.keys()))
-        self.shape = (len(labels), (4 if rotate else 1), (2 if flip else 1), (2 if enhance else 1))  # (files, x_patches, y_patches, rotations, flip, enhance)
-        self.augment_size = np.prod(self.shape) / len(labels)
-
-        self.transforms = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ])
-
-    def __getitem__(self, index):
-        im, rotation, flip, enhance = np.unravel_index(index, self.shape)
-
-        with Image.open(self.names[im]) as img:
-
-            if flip != 0:
-                img = img.transpose(Image.FLIP_LEFT_RIGHT)
-
-            if rotation != 0:
-                img = img.rotate(rotation * 90)
-
-            if enhance != 0:
-                factors = np.random.uniform(.5, 1.5, 3)
-                img = ImageEnhance.Color(img).enhance(factors[0])
-                img = ImageEnhance.Contrast(img).enhance(factors[1])
-                img = ImageEnhance.Brightness(img).enhance(factors[2])
-
-            extractor = PatchExtractor(img=img, patch_size=PATCH_SIZE, stride=self.stride)
-            patches = extractor.extract_patches()
-
-            label = self.labels[self.names[im]]
-
-            b = torch.zeros((len(patches), 3, PATCH_SIZE, PATCH_SIZE))
-            for i in range(len(patches)):
-                b[i] = self.transforms(patches[i])
-
-            return b, label
-
-    def __len__(self):
-        return np.prod(self.shape)

@@ -6,22 +6,32 @@ from argparse import Namespace
 if __name__ == "__main__":
     set_seed()
 
-    args = Namespace(
+    args_patch_wise = Namespace(
         batch_size=32,
         lr=0.0001,
         epochs=1,
         augment=True,
-        workers=0,
+        workers=4,
         classes=3,
-        data_path="./data"
+        data_path="./data/patchwise_dataset"
+    )
+
+    args_img_wise = Namespace(
+        batch_size=1,
+        lr=0.0001,
+        epochs=1,
+        augment=True,
+        workers=4,
+        classes=3,
+        data_path="./data/imagewise_dataset"
     )
 
     patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
-    patch_wise_model.train_model(args)
-    patch_wise_model.plot_metrics()
-    patch_wise_model.test(args)
-    patch_wise_model.test_separate_classes(args)
+    #patch_wise_model.train_model(args_patch_wise)
+    #patch_wise_model.plot_metrics()
+    #patch_wise_model.test(args_patch_wise)
+    #patch_wise_model.test_separate_classes(args_patch_wise)
     path = patch_wise_model.save_model("./models/")
 
-    image_wise_model = BaseCNN(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path)
-    image_wise_model.set_linear_layer(args)
+    image_wise_model = BaseCNN(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
+    image_wise_model.train_model(args_img_wise)

@@ -2,9 +2,13 @@ import matplotlib.pyplot as plt
 
 from .patchwisemodel import PatchWiseModel
 
-from .datasets import ImageWiseDataset, set_seed
+import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from .datasets import MEANS, STD
 from tqdm import tqdm
+import torchvision
+import numpy as np
+import PIL
 
 import torch.nn.functional as F
 import torch.optim as optim
@@ -88,27 +92,28 @@ class BaseCNN(ImageWiseModels):
         print("Using:", self.device)
 
     def forward(self, x):
-        x = self.patch_wise_model(x)
+        x = self.patch_wise_model.features(x)
         x = self.cnn_layers(x)
         x = x.view(x.size(0), -1)
         x = self.linear_layers(x)
         return x
     
     def set_linear_layer(self, args):
-        train_data_loader = DataLoader(
-            dataset=ImageWiseDataset(path=args.data_path + "/train"),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
         super(BaseCNN, self).train()  # Set model to training mode
         data, _ = next(iter(train_data_loader))
+        data = data[0]
         x = data.to(self.device)
-        x = self.patch_wise_model(x)
+        x = self.patch_wise_model.features(x)
         x = self.cnn_layers(x)
 
+        print("Setting Linear Layer with shape:", x.shape)
         self.linear_layers = nn.Sequential(
-            nn.Linear(x[1].item()*x[2].item()*x[3].item(), 64),
+            nn.Linear(x.size(1)*x.size(2)*x.size(3), 64),
             nn.ReLU(inplace=True),
             nn.Dropout(0.5),
             nn.Linear(64, 32),
@@ -116,25 +121,27 @@ class BaseCNN(ImageWiseModels):
             #nn.Dropout(0.5),
             nn.Linear(32, args.classes) # NO softmax, bc it is in crossentropy loss
         )
-        
         self.to(self.device)
-    
+
     def train_model(self, args):
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        training_transforms = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
 
-        train_data_loader = DataLoader(
-            dataset=ImageWiseDataset(path=args.data_path + "/train", rotate=args.augment, flip=args.augment, enhance=args.augment),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        validation_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
+        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
+        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
 
-        val_data_loader = DataLoader(
-            dataset=ImageWiseDataset(path=args.data_path + "/validation"),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         criterion = nn.CrossEntropyLoss()
@@ -156,10 +163,10 @@ class BaseCNN(ImageWiseModels):
             # Each epoch has a training and validation phase
             for phase in ['train', 'val']:
                 if phase == 'train':
-                    super(PatchWiseModel, self).train()  # Set model to training mode
+                    super(BaseCNN, self).train()  # Set model to training mode
                     dataloader = train_data_loader
                 else:
-                    super(PatchWiseModel, self).eval()   # Set model to evaluate mode
+                    super(BaseCNN, self).eval()   # Set model to evaluate mode
                     dataloader = val_data_loader
 
                 running_loss = 0.0
@@ -167,6 +174,8 @@ class BaseCNN(ImageWiseModels):
 
                 # Iterate over data.
                 for inputs, labels in tqdm(dataloader):
+                    inputs = inputs[0]
+                    labels = torch.Tensor([labels.item()] * inputs.size(0)).type(torch.LongTensor)
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
 
@@ -216,21 +225,22 @@ class BaseCNN(ImageWiseModels):
         self.load_state_dict(best_model_wts)    
     
     def test(self, args):
-        test_data_loader = DataLoader(
-            dataset=ImageWiseDataset(path=args.data_path + "/test"),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
 
         super(BaseCNN, self).eval()
         with torch.no_grad():
             correct = 0
             total = 0
-            for images, labels in test_data_loader:
-                images = images.to(self.device)
+            for inputs, labels in test_data_loader:
+                inputs = inputs[0]
+                labels = torch.Tensor([labels.item()] * inputs.size(0)).type(torch.LongTensor)
+                inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
-                outputs = self(images)
+                outputs = self(inputs)
                 _, predicted = torch.max(outputs.data, 1)
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()

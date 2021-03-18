@@ -1,9 +1,13 @@
 import matplotlib.pyplot as plt
 
-from .datasets import PatchWiseDataset
+import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from .datasets import MEANS, STD
 from tqdm import tqdm
+import torchvision
+import PIL
 
+from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
@@ -109,6 +113,12 @@ class PatchWiseModel(nn.Module):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
 
+    def output(self, input_tensor):
+        super(PatchWiseModel, self).eval()
+        with torch.no_grad():
+            res = self.features(Variable(input_tensor))
+        return res.squeeze()
+
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
@@ -119,19 +129,24 @@ class PatchWiseModel(nn.Module):
     def train_model(self, args):
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
-        train_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=args.data_path + "/train", rotate=args.augment, flip=args.augment, enhance=args.augment),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        training_transforms = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
 
-        val_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=args.data_path + "/validation"),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        validation_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
+
+        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
+        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
+
+        train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
@@ -231,18 +246,17 @@ class PatchWiseModel(nn.Module):
         plt.legend(frameon=False)
 
     def test(self, args):
-        test_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=args.data_path + "/test"),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
 
         super(PatchWiseModel, self).eval()
         with torch.no_grad():
             correct = 0
             total = 0
-            for images, labels in test_data_loader:
+            for images, labels in tqdm(test_data_loader):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 outputs = self(images)
@@ -253,19 +267,19 @@ class PatchWiseModel(nn.Module):
         print('Test Accuracy of the model: {} %'.format(100 * correct / total))
     
     def test_separate_classes(self, args):
-        test_data_loader = DataLoader(
-            dataset=PatchWiseDataset(path=args.data_path + "/test"),
-            batch_size=args.batch_size,
-            shuffle=True,
-            num_workers=args.workers
-        )
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
+
 
         class_correct = list(0. for i in range(3))
         class_total = list(0. for i in range(3))
 
         super(PatchWiseModel, self).eval()
         with torch.no_grad():
-            for images, labels in test_data_loader:
+            for images, labels in tqdm(test_data_loader):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 outputs = self(images)
@@ -283,9 +297,10 @@ class PatchWiseModel(nn.Module):
                 i, 100 * class_correct[i] / class_total[i]))
     
     def save_model(self, path):
-        torch.save(self.state_dict(), path + "patchwise_network_" + str(time.strftime('%Y/%m/%d %H:%M')) + "ckpt")
-        print("Model saved:", path + "patchwise_network_" + str(time.strftime('%Y/%m/%d %H:%M')) + "ckpt")
-        return path + "patchwise_network_" + str(time.strftime('%Y/%m/%d %H:%M')) + "ckpt"
+        file_name = path + "patchwise_network_" + str(time.strftime('%Y-%m-%d_%H-%M')) + "ckpt"
+        torch.save(self.state_dict(), file_name)
+        print("Model saved:", file_name)
+        return file_name
     
     def load(self, path):
         try:
