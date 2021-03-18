@@ -115,7 +115,7 @@ class PatchWiseModel(nn.Module):
         x = F.log_softmax(x, dim=1)
         return x
 
-    def train(self, args):
+    def train_model(self, args):
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         train_data_loader = DataLoader(
