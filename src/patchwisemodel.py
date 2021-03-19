@@ -297,7 +297,7 @@ class PatchWiseModel(nn.Module):
                 i, 100 * class_correct[i] / class_total[i]))
     
     def save_model(self, path):
-        file_name = path + "patchwise_network_" + str(time.strftime('%Y-%m-%d_%H-%M')) + "ckpt"
+        file_name = path + "patchwise_network_" + str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
         torch.save(self.state_dict(), file_name)
         print("Model saved:", file_name)
         return file_name
