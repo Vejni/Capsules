@@ -41,9 +41,10 @@ class ImageWiseModels(nn.Module):
         plt.legend(frameon=False)
 
     def save_model(self, path, model_type):
-        torch.save(self.state_dict(), path + "imagewise_network_" + model_type +str(time.strftime('%Y/%m/%d %H:%M')) + ".ckpt")
-        print("Model saved:", path + "imagewise_network_" + model_type + str(time.strftime('%Y/%m/%d %H:%M')) + ".ckpt")
-        return path + "imagewise_network_" + str(time.strftime('%Y/%m/%d %H:%M')) + ".ckpt"
+        file_name = self.state_dict(), path + "imagewise_network_" + model_type + "_" +str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
+        torch.save(file_name)
+        print(file_name)
+        return file_name
     
     def load(self, path):
         try:
