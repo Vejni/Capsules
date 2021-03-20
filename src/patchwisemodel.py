@@ -160,7 +160,7 @@ class PatchWiseModel(nn.Module):
         since = time.time()
 
         best_model_wts = copy.deepcopy(self.state_dict())
-        best_acc = 0.0
+        best_acc = 0.
 
         for epoch in range(args.epochs):
             print('Epoch {}/{}'.format(epoch+1, args.epochs))
