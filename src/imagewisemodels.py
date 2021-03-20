@@ -5,9 +5,9 @@ from .patchwisemodel import PatchWiseModel
 from .CapsNetPytorch.capsulelayers import DenseCapsule, PrimaryCapsule
 from .CapsNetPytorch.capsulenet import caps_loss
 
+from .datasets import MEANS, STD
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
-from .datasets import MEANS, STD
 from tqdm import tqdm
 import torchvision
 import PIL
@@ -15,6 +15,7 @@ import PIL
 from torch.autograd import Variable
 import torch.optim as optim
 import torch.nn as nn
+import numpy as np
 import torch
 import copy
 import time
@@ -236,17 +237,26 @@ class BaseCNN(ImageWiseModels):
 
         super(BaseCNN, self).eval()
         with torch.no_grad():
-            correct = 0
-            total = 0
+            patch_acc = 0
+            image_acc = 0
             for inputs, labels in test_data_loader:
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
                 outputs = self(inputs)
                 _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-                
-        print('Test Accuracy of the model: {} %'.format(100 * correct / total))
+
+                # Majority voting
+                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
+                confidence = np.round(confidence * 100, 2)
+
+                if labels.data[0].item()== maj_prob:
+                    image_acc += 1
+
+        patch_acc  /= len(test_data_loader.dataset)
+        image_acc /=  (len(test_data_loader.dataset)/12)
+        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
+        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
 
 
 class DynamicCapsules(ImageWiseModels): 
@@ -416,20 +426,33 @@ class DynamicCapsules(ImageWiseModels):
 
         super(DynamicCapsules, self).eval()
         with torch.no_grad():
-            test_acc = 0
-            test_loss = 0
+            patch_acc = 0
+            patch_loss = 0
+            image_acc = 0
             for inputs, labels in tqdm(test_data_loader):
                 labels = torch.zeros(labels.size(0), args.classes).scatter_(1, labels.view(-1, 1), 1.)  # change to one-hot coding
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
-                inputs = self.patch_wise_model.features(inputs)
+                inputs  = self.patch_wise_model.features(inputs)
+
                 y_pred, x_recon = self(inputs) # No y in testing
                 _, predicted = torch.max(y_pred, 1)
                 _, temp = torch.max(labels, 1)
-                test_acc += (predicted == temp).sum().item()
-                test_loss += caps_loss(labels, y_pred, inputs, x_recon, args.lam_recon).item() * inputs.size(0)  # sum up batch loss
+
+                patch_acc += (predicted == temp).sum().item()
+                patch_loss += caps_loss(labels, y_pred, inputs, x_recon, args.lam_recon).item() * inputs.size(0)  # sum up batch loss
         
-        test_loss /= len(test_data_loader.dataset)
-        test_acc  /= len(test_data_loader.dataset)
-        print('Test Accuracy of the model: {} %'.format(100 * test_acc))
-        print('Test Loss of the model: {} %'.format(test_loss))
+                # Majority voting
+                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
+                confidence = np.round(confidence * 100, 2)
+
+                if temp.data[0].item()== maj_prob:
+                    image_acc += 1
+
+        patch_loss /= len(test_data_loader.dataset)
+        patch_acc  /= len(test_data_loader.dataset)
+        image_acc /=  (len(test_data_loader.dataset)/12)
+        print('Test Loss of the model: {} %'.format(patch_loss))
+        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
+        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))

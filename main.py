@@ -36,6 +36,6 @@ if __name__ == "__main__":
     path = patch_wise_model.save_model("./models/")
 
     image_wise_model = DynamicCapsules(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
-    image_wise_model.train_model(args_img_wise)
+    #image_wise_model.train_model(args_img_wise)
     image_wise_model.test(args_img_wise)
     path = patch_wise_model.save_model("./models/", "Dynamic")
