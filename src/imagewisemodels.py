@@ -381,8 +381,8 @@ class DynamicCapsules(ImageWiseModels):
                 if phase == 'train':
                     scheduler.step()
 
-                epoch_loss = running_loss /len(dataloader)
-                epoch_acc = running_corrects.double() / len(dataloader)
+                epoch_loss = running_loss /len(dataloader.dataset)
+                epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
                 print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                     phase, epoch_loss, epoch_acc))
@@ -406,3 +406,30 @@ class DynamicCapsules(ImageWiseModels):
 
         # load best model weights
         self.load_state_dict(best_model_wts)    
+    
+    def test(self, args):
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
+
+        super(DynamicCapsules, self).eval()
+        with torch.no_grad():
+            test_acc = 0
+            test_loss = 0
+            for inputs, labels in tqdm(test_data_loader):
+                labels = torch.zeros(labels.size(0), args.classes).scatter_(1, labels.view(-1, 1), 1.)  # change to one-hot coding
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                inputs = self.patch_wise_model.features(inputs)
+                y_pred, x_recon = self(inputs) # No y in testing
+                _, predicted = torch.max(y_pred, 1)
+                _, temp = torch.max(labels, 1)
+                test_acc += (predicted == temp).sum().item()
+                test_loss += caps_loss(labels, y_pred, inputs, x_recon, args.lam_recon).item() * inputs.size(0)  # sum up batch loss
+        
+        test_loss /= len(test_data_loader.dataset)
+        test_acc  /= len(test_data_loader.dataset)
+        print('Test Accuracy of the model: {} %'.format(100 * test_acc))
+        print('Test Loss of the model: {} %'.format(test_loss))
