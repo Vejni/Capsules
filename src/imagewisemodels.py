@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 
 from .patchwisemodel import PatchWiseModel
 
-from .CapsNetPytorch.capsulelayers import DenseCapsule, PrimaryCapsule
-from .CapsNetPytorch.capsulenet import caps_loss
+from .CapsNet.capsulelayers import DenseCapsule, PrimaryCapsule
+from .CapsNet.capsulenet import caps_loss
 
 from .datasets import MEANS, STD
 import torchvision.transforms as transforms
