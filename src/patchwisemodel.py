@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, ConcatDataset
-from .datasets import MEANS, STD, imshow
+from .datasets import MEANS, STD
 from tqdm import tqdm
 import torchvision
 import PIL
@@ -196,7 +196,7 @@ class PatchWiseModel(nn.Module):
                 running_corrects = 0
 
                 # Iterate over data.
-                for inputs, labels in dataloader:
+                for inputs, labels in tqdm(dataloader):
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
 

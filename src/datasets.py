@@ -7,10 +7,6 @@ import torch
 import torch
 import os
 
-from torchvision.transforms.transforms import CenterCrop
-
-#from .patching import PatchExtractor
-
 VALIDATION_SET = 0.15
 TRAINING_SET = 0.7
 TEST_SET = 0.15
@@ -20,7 +16,8 @@ STD = [0.3731, 0.3243, 0.3199]
 
 IMAGE_SIZE = (2048, 2560)
 CROPPED_IMAGE_SIZE = (1536, 2048)
-LABELS = ["Grade 1", "Grade 2", "Grade 3"]
+GRADED_LABELS = ["Grade 1", "Grade 2", "Grade 3"]
+ICIAR_LABELS = ["Benign", "InSitu", "Invasive", "Normal"]
 SEED = 123
 
 PATCH_SIZE = 512
@@ -78,29 +75,36 @@ def compute_normalization_stats(root_dir,  test_set=TEST_SET, training_set=TRAIN
     print("Means:", mean)
     print("Std:", std)
 
-def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET, val_set=VALIDATION_SET):
+def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET, val_set=VALIDATION_SET, graded=True):
     from tqdm import tqdm
     set_seed(SEED)
     assert test_set + training_set + val_set == 1, "Train/Test/Val Set sizes incorrect"
     BATCH_SIZE = 1
 
-    t = transforms.Compose([
-        transforms.Resize(IMAGE_SIZE),
-        transforms.CenterCrop(CROPPED_IMAGE_SIZE),
-        transforms.ToTensor()
-    ])
+    if graded:
+        t = transforms.Compose([
+            transforms.Resize(IMAGE_SIZE),
+            transforms.CenterCrop(CROPPED_IMAGE_SIZE),
+            transforms.ToTensor()
+        ])
+        data = torchvision.datasets.ImageFolder(root=root_dir+"/Histopathological_Graded", transform=t) 
+        LABELS = GRADED_LABELS
+    else:
+        t = transforms.Compose([
+            transforms.Resize(CROPPED_IMAGE_SIZE),
+            transforms.ToTensor()
+        ])
+        data = torchvision.datasets.ImageFolder(root=root_dir+"/ICIAR2018_BACH_Challenge/Photos", transform=t) 
+        LABELS = ICIAR_LABELS
 
-    data = torchvision.datasets.ImageFolder(root=root_dir+"/Histopathological_Graded", transform=t)
 
     train_size = int(training_set*len(data))
     val_size = int(val_set*len(data))
     test_size = len(data) - (train_size + val_size)
     train_data, test_data, val_data = torch.utils.data.random_split(data, [train_size, test_size, val_size])
-
     train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE,  num_workers=0)
     test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=0)
     val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, num_workers=0)
-
     print("Number of training images:", len(train_data), "Number of test images:", len(test_data), "Number of validation images:", len(val_data))
 
     if not os.path.exists(root_dir):

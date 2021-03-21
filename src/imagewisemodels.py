@@ -178,7 +178,7 @@ class BaseCNN(ImageWiseModels):
                 running_corrects = 0
 
                 # Iterate over data.
-                for inputs, labels in dataloader:
+                for inputs, labels in tqdm(dataloader):
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
                     inputs = self.patch_wise_model.features(inputs)
@@ -363,7 +363,7 @@ class DynamicCapsules(ImageWiseModels):
                 running_corrects = 0
 
                 # Iterate over data.
-                for inputs, labels in dataloader:
+                for inputs, labels in tqdm(dataloader):
                     labels = torch.zeros(labels.size(0), args.classes).scatter_(1, labels.view(-1, 1), 1.)  # change to one-hot coding
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
