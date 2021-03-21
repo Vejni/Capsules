@@ -29,8 +29,8 @@ if __name__ == "__main__":
     )
 
     patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
-    patch_wise_model.train_model(args_patch_wise)
-    patch_wise_model.plot_metrics()
+    #patch_wise_model.train_model(args_patch_wise)
+    #patch_wise_model.plot_metrics()
     patch_wise_model.test(args_patch_wise)
     patch_wise_model.test_separate_classes(args_patch_wise)
     path = patch_wise_model.save_model("./models/")

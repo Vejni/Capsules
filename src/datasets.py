@@ -7,6 +7,8 @@ import torch
 import torch
 import os
 
+from torchvision.transforms.transforms import CenterCrop
+
 #from .patching import PatchExtractor
 
 VALIDATION_SET = 0.15
@@ -16,7 +18,8 @@ TEST_SET = 0.15
 MEANS = [0.4731, 0.3757, 0.4117]
 STD = [0.3731, 0.3243, 0.3199]
 
-IMAGE_SIZE = (1536, 2048)
+IMAGE_SIZE = (2048, 2560)
+CROPPED_IMAGE_SIZE = (1536, 2048)
 LABELS = ["Grade 1", "Grade 2", "Grade 3"]
 SEED = 123
 
@@ -83,6 +86,7 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
 
     t = transforms.Compose([
         transforms.Resize(IMAGE_SIZE),
+        transforms.CenterCrop(CROPPED_IMAGE_SIZE),
         transforms.ToTensor()
     ])
 

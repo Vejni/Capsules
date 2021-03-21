@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, ConcatDataset
-from .datasets import MEANS, STD
+from .datasets import MEANS, STD, imshow
 from tqdm import tqdm
 import torchvision
 import PIL
@@ -196,7 +196,7 @@ class PatchWiseModel(nn.Module):
                 running_corrects = 0
 
                 # Iterate over data.
-                for inputs, labels in tqdm(dataloader):
+                for inputs, labels in dataloader:
                     inputs = inputs.to(self.device)
                     labels = labels.to(self.device)
 
@@ -221,8 +221,8 @@ class PatchWiseModel(nn.Module):
                 if phase == 'train':
                     scheduler.step()
 
-                epoch_loss = running_loss /len(dataloader)
-                epoch_acc = running_corrects.double() / len(dataloader)
+                epoch_loss = running_loss /len(dataloader.dataset)
+                epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
                 print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                     phase, epoch_loss, epoch_acc))
@@ -267,21 +267,19 @@ class PatchWiseModel(nn.Module):
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ]))
-        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
+        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
 
         super(PatchWiseModel, self).eval()
         with torch.no_grad():
             correct = 0
-            total = 0
             for images, labels in tqdm(test_data_loader):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
                 outputs = self(images)
                 _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
                 correct += (predicted == labels).sum().item()
                 
-        print('Test Accuracy of the model: {} %'.format(100 * correct / total))
+        print('Test Accuracy of the model: {} %'.format(100 * correct / len(test_data_loader.dataset)))
     
     def test_separate_classes(self, args):
         test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
