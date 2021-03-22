@@ -46,8 +46,8 @@ class ImageWiseModels(nn.Module):
         plt.legend(frameon=False)
 
     def save_model(self, path, model_type):
-        file_name = self.state_dict(), path + "imagewise_network_" + model_type + "_" +str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
-        torch.save(file_name)
+        file_name = path + "imagewise_network_" + model_type + "_" +str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
+        torch.save(self.state_dict(), file_name)
         print(file_name)
         return file_name
     
@@ -202,8 +202,8 @@ class BaseCNN(ImageWiseModels):
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data)
 
-                epoch_loss = running_loss /len(dataloader)
-                epoch_acc = running_corrects.double() / len(dataloader)
+                epoch_loss = running_loss /len(dataloader.dataset)
+                epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
                 print('{} Loss: {:.4f} Acc: {:.4f}'.format(
                     phase, epoch_loss, epoch_acc))
@@ -242,6 +242,7 @@ class BaseCNN(ImageWiseModels):
             for inputs, labels in test_data_loader:
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
+                inputs  = self.patch_wise_model.features(inputs)
                 outputs = self(inputs)
                 _, predicted = torch.max(outputs.data, 1)
 
@@ -257,7 +258,6 @@ class BaseCNN(ImageWiseModels):
         image_acc /=  (len(test_data_loader.dataset)/12)
         print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
         print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
-
 
 class DynamicCapsules(ImageWiseModels): 
     """
@@ -443,6 +443,7 @@ class DynamicCapsules(ImageWiseModels):
                 patch_loss += caps_loss(labels, y_pred, inputs, x_recon, args.lam_recon).item() * inputs.size(0)  # sum up batch loss
         
                 # Majority voting
+                predicted = predicted.cpu()
                 maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
                 confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
                 confidence = np.round(confidence * 100, 2)
