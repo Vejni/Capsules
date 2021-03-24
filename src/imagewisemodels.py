@@ -5,6 +5,10 @@ from .patchwisemodel import PatchWiseModel
 from .CapsNet.capsulelayers import DenseCapsule, PrimaryCapsule
 from .CapsNet.capsulenet import caps_loss
 
+import torch.nn.functional as F
+from .VarCaps import layers
+from .VarCaps import vb_routing 
+
 from .datasets import MEANS, STD
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
@@ -247,6 +251,7 @@ class BaseCNN(ImageWiseModels):
                 _, predicted = torch.max(outputs.data, 1)
 
                 # Majority voting
+                predicted = predicted.cpu()
                 maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
                 confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
                 confidence = np.round(confidence * 100, 2)
@@ -455,5 +460,194 @@ class DynamicCapsules(ImageWiseModels):
         patch_acc  /= len(test_data_loader.dataset)
         image_acc /=  (len(test_data_loader.dataset)/12)
         print('Test Loss of the model: {} %'.format(patch_loss))
+        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
+        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
+
+class VariationalCapsules(ImageWiseModels): 
+    """
+    TODO
+    """
+ 
+    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
+        super(VariationalCapsules, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.output_size = output_size
+        self.n_classes = args.classes
+        self.routings = args.routings
+
+        self.P = args.pose_dim
+        self.PP = int(np.max([2, self.P*self.P]))
+        self.A, self.B, self.C, self.D = args.arch
+
+        # Layer 1: Just a conventional Conv2D layer
+        self.conv1 = nn.Conv2d(output_size[0], self.A, kernel_size=5, stride=2, bias=False)
+        nn.init.kaiming_uniform_(self.conv1.weight)
+
+        self.BN_1 = nn.BatchNorm2d(self.A)
+        self.PrimaryCaps = layers.PrimaryCapsules2d(in_channels=self.A, out_caps=self.B,
+            kernel_size=3, stride=2, pose_dim=self.P
+        )
+
+        # same as dense (FC) caps, no weights are shared between class_caps
+        self.ClassCaps = layers.ConvCapsules2d(in_caps=self.B, out_caps=self.n_classes,
+            kernel_size=6, stride=1, pose_dim=self.P
+        ) # adjust K depending on input size
+
+        self.ClassRouting = vb_routing.VariationalBayesRouting2d(in_caps=self.B, out_caps=self.n_classes,
+            kernel_size=6, stride=1, pose_dim=self.P,
+            cov='diag', iter=args.routings,
+            alpha0=1., m0=torch.zeros(self.D), kappa0=1.,
+            Psi0=torch.eye(self.D), nu0=self.D+1, class_caps=True
+        )
+        self.to(self.device)
+
+    def forward(self, x):
+        # Out ← [?, A, F, F]
+        x = F.relu(self.BN_1(self.conv1(x)))
+        # Out ← a [?, B, F, F], v [?, B, P, P, F, F]
+        a,v = self.PrimaryCaps(x)
+        # Out ← a [?, B, 1, 1, 1, F, F, K, K], v [?, B, C, P*P, 1, F, F, K, K]
+        a,v = self.ClassCaps(a, v)
+        # Out ← yhat [?, C], v [?, C, P*P, 1]
+        yhat, v = self.ClassRouting(a, v, self.device)
+        return yhat
+
+    def train_model(self, args):
+        print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        training_transforms = transforms.Compose([
+            transforms.RandomHorizontalFlip(),
+            transforms.RandomVerticalFlip(),
+            transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
+
+        validation_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
+        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
+        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
+
+        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
+        val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
+
+        optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
+        criterion = nn.CrossEntropyLoss()
+
+        # keeping-track-of-losses 
+        self.train_losses = []
+        self.valid_losses = []
+        self.train_acc = []
+        self.val_acc = []
+        since = time.time()
+
+        best_model_wts = copy.deepcopy(self.state_dict())
+        best_acc = 0.0
+
+        for epoch in range(args.epochs):
+            print('Epoch {}/{}'.format(epoch+1, args.epochs))
+            print('-' * 10)
+
+            # Each epoch has a training and validation phase
+            for phase in ['train', 'val']:
+                if phase == 'train':
+                    super(VariationalCapsules, self).train()  # Set model to training mode
+                    dataloader = train_data_loader
+                else:
+                    super(VariationalCapsules, self).eval()   # Set model to evaluate mode
+                    dataloader = val_data_loader
+
+                running_loss = 0.0
+                running_corrects = 0
+
+                # Iterate over data.
+                for inputs, labels in tqdm(dataloader):
+                    inputs = inputs.to(self.device)
+                    labels = labels.to(self.device)
+                    inputs = self.patch_wise_model.features(inputs)
+
+                    # zero the parameter gradients
+                    optimizer.zero_grad()
+
+                    # forward
+                    # track history if only in train
+                    with torch.set_grad_enabled(phase == 'train'):
+                        inputs = torch.rand(12, 3, 32, 32)
+                        y_pred = self(inputs)
+                        loss = criterion(y_pred, labels)
+                        # backward + optimize only if in training phase
+                        if phase == 'train':
+                            loss.backward()
+                            optimizer.step()
+
+                    # statistics
+                    _, predicted = torch.max(y_pred, 1)
+                    running_loss += loss.item() * inputs.size(0)
+                    running_corrects += (predicted == labels).float().sum()
+                if phase == 'train':
+                    scheduler.step()
+
+                epoch_loss = running_loss /len(dataloader.dataset)
+                epoch_acc = running_corrects.double() / len(dataloader.dataset)
+
+                print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+                    phase, epoch_loss, epoch_acc))
+                
+                if phase == 'train':
+                    self.train_losses.append(epoch_loss)
+                    self.train_acc.append(epoch_acc)
+                else:
+                    self.valid_losses.append(epoch_loss)
+                    self.val_acc.append(epoch_acc)
+
+                # deep copy the model
+                if phase == 'val' and epoch_acc > best_acc:
+                    best_acc = epoch_acc
+                    best_model_wts = copy.deepcopy(self.state_dict())
+
+        time_elapsed = time.time() - since
+        print('Training complete in {:.0f}m {:.0f}s'.format(
+            time_elapsed // 60, time_elapsed % 60))
+        print('Best val Acc: {:4f}'.format(best_acc))
+
+        # load best model weights
+        self.load_state_dict(best_model_wts)    
+    
+    def test(self, args):
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
+
+        super(VariationalCapsules, self).eval()
+        with torch.no_grad():
+            patch_acc = 0
+            image_acc = 0
+            for inputs, labels in tqdm(test_data_loader):
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                inputs  = self.patch_wise_model.features(inputs)
+
+                y_pred = self(inputs) # No y in testing
+                _, predicted = torch.max(y_pred, 1)
+                patch_acc += (predicted == labels).sum().item()
+                        
+                # Majority voting
+                predicted = predicted.cpu()
+                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
+                confidence = np.round(confidence * 100, 2)
+
+                if labels.data[0].item()== maj_prob:
+                    image_acc += 1
+
+        patch_acc  /= len(test_data_loader.dataset)
+        image_acc /=  (len(test_data_loader.dataset)/12)
+
         print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
         print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
