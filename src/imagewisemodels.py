@@ -10,8 +10,8 @@ from .VarCaps import layers
 from .VarCaps import vb_routing 
 
 from .datasets import MEANS, STD
+from torch.utils.data import DataLoader, ConcatDataset
 import torchvision.transforms as transforms
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 import torchvision
 import PIL
@@ -134,23 +134,64 @@ class BaseCNN(ImageWiseModels):
 
     def train_model(self, args):
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
-        training_transforms = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ])
-
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ])
-        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
-        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
 
-        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
-        val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
+        if args.augment:
+            augmenting = [
+                transforms.Compose([
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ])
+            ]
+
+            train_data_loader = DataLoader(
+                ConcatDataset([
+                    torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=t) for t in augmenting
+                ]), 
+                batch_size=args.batch_size, shuffle=True,  num_workers=args.workers
+            )
+        
+        else:
+            training_transforms = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                transforms.ColorJitter(hue=.05, saturation=.05),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=MEANS, std=STD)
+            ])
+            train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
+            train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        
+        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
+        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         criterion = nn.CrossEntropyLoss()
@@ -320,23 +361,64 @@ class DynamicCapsules(ImageWiseModels):
 
     def train_model(self, args):
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
-        training_transforms = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ])
-
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ])
-        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
-        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
 
-        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
-        val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
+        if args.augment:
+            augmenting = [
+                transforms.Compose([
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ])
+            ]
+
+            train_data_loader = DataLoader(
+                ConcatDataset([
+                    torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=t) for t in augmenting
+                ]), 
+                batch_size=args.batch_size, shuffle=True,  num_workers=args.workers
+            )
+        
+        else:
+            training_transforms = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                transforms.ColorJitter(hue=.05, saturation=.05),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=MEANS, std=STD)
+            ])
+            train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
+            train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        
+        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
+        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
@@ -516,23 +598,64 @@ class VariationalCapsules(ImageWiseModels):
 
     def train_model(self, args):
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
-        training_transforms = transforms.Compose([
-            transforms.RandomHorizontalFlip(),
-            transforms.RandomVerticalFlip(),
-            transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ])
-
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ])
-        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
-        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
 
-        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
-        val_data_loader = DataLoader(val_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
+        if args.augment:
+            augmenting = [
+                transforms.Compose([
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ])
+            ]
+
+            train_data_loader = DataLoader(
+                ConcatDataset([
+                    torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=t) for t in augmenting
+                ]), 
+                batch_size=args.batch_size, shuffle=True,  num_workers=args.workers
+            )
+        
+        else:
+            training_transforms = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                transforms.ColorJitter(hue=.05, saturation=.05),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=MEANS, std=STD)
+            ])
+            train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
+            train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        
+        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
+        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)

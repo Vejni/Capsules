@@ -329,7 +329,6 @@ class PatchWiseModel(nn.Module):
                         class_correct[predicted[i]] += 1
                     class_total[labels[i]] += 1
 
-
         for i in range(3):
             print('Accuracy of %5s : %2d %%' % (
                 i, 100 * class_correct[i] / class_total[i]))
