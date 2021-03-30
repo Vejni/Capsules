@@ -121,7 +121,7 @@ class ConvCapsules2d(nn.Module):
             if isinstance(self.padding, int):
                 self.padding = [self.padding]*4
 
-    def forward(self, activations, poses): # ([?, B, F, F], [?, B, P, P, F, F]) ← In
+    def forward(self, activations, poses, device): # ([?, B, F, F], [?, B, P, P, F, F]) ← In
 
         if self.padding != 0:
             activations = F.pad(activations, self.padding) # [1,1,1,1]
@@ -156,8 +156,8 @@ class ConvCapsules2d(nn.Module):
 
             # coordinates = torch.arange(self.F, dtype=torch.float32) / self.F
             coordinates = torch.arange(self.F, dtype=torch.float32).add(1.) / (self.F*10)
-            i_vals = torch.zeros(self.P*self.P,self.F,1).cuda()
-            j_vals = torch.zeros(self.P*self.P,1,self.F).cuda()
+            i_vals = torch.zeros(self.P*self.P,self.F,1).to(device)
+            j_vals = torch.zeros(self.P*self.P,1,self.F).to(device)
             i_vals[self.P-1,:,0] = coordinates
             j_vals[2*self.P-1,0,:] = coordinates
 

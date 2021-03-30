@@ -564,35 +564,57 @@ class VariationalCapsules(ImageWiseModels):
         self.A, self.B, self.C, self.D = args.arch
 
         # Layer 1: Just a conventional Conv2D layer
-        self.conv1 = nn.Conv2d(output_size[0], self.A, kernel_size=5, stride=2, bias=False)
-        nn.init.kaiming_uniform_(self.conv1.weight)
+        self.Conv_1 = nn.Conv2d(output_size[0], self.A, kernel_size=5, stride=2, bias=False)
+        nn.init.kaiming_uniform_(self.Conv_1.weight)
 
         self.BN_1 = nn.BatchNorm2d(self.A)
         self.PrimaryCaps = layers.PrimaryCapsules2d(in_channels=self.A, out_caps=self.B,
-            kernel_size=3, stride=2, pose_dim=self.P
-        )
+            kernel_size=1, stride=1, pose_dim=self.P)
 
-        # same as dense (FC) caps, no weights are shared between class_caps
-        self.ClassCaps = layers.ConvCapsules2d(in_caps=self.B, out_caps=self.n_classes,
-            kernel_size=6, stride=1, pose_dim=self.P
-        ) # adjust K depending on input size
+        self.ConvCaps_1 = layers.ConvCapsules2d(in_caps=self.B, out_caps=self.C,
+            kernel_size=3, stride=2, pose_dim=self.P)
 
-        self.ClassRouting = vb_routing.VariationalBayesRouting2d(in_caps=self.B, out_caps=self.n_classes,
-            kernel_size=6, stride=1, pose_dim=self.P,
+        self.ConvRouting_1 = vb_routing.VariationalBayesRouting2d(in_caps=self.B, out_caps=self.C,
+            kernel_size=3, stride=2, pose_dim=self.P,
             cov='diag', iter=args.routings,
-            alpha0=1., m0=torch.zeros(self.D), kappa0=1.,
-            Psi0=torch.eye(self.D), nu0=self.D+1, class_caps=True
-        )
+            alpha0=1., m0=torch.zeros(self.PP), kappa0=1.,
+            Psi0=torch.eye(self.PP), nu0=self.PP+1)
+
+        self.ConvCaps_2 = layers.ConvCapsules2d(in_caps=self.C, out_caps=self.D,
+            kernel_size=3, stride=1, pose_dim=self.P)
+
+        self.ConvRouting_2 = vb_routing.VariationalBayesRouting2d(in_caps=self.C, out_caps=self.D,
+            kernel_size=3, stride=1, pose_dim=self.P,
+            cov='diag', iter=args.routings,
+            alpha0=1., m0=torch.zeros(self.PP), kappa0=1.,
+            Psi0=torch.eye(self.PP), nu0=self.PP+1)
+
+        self.ClassCaps = layers.ConvCapsules2d(in_caps=self.D, out_caps=self.n_classes,
+            kernel_size=1, stride=1, pose_dim=self.P, share_W_ij=True, coor_add=True)
+
+        self.ClassRouting = vb_routing.VariationalBayesRouting2d(in_caps=self.D, out_caps=self.n_classes,
+            kernel_size=12, stride=1, pose_dim=self.P, # adjust final kernel_size K depending on input H/W, for H=W=32, K=4.
+            cov='diag', iter=args.routings,
+            alpha0=1., m0=torch.zeros(self.PP), kappa0=1.,
+            Psi0=torch.eye(self.PP), nu0=self.PP+1, class_caps=True)
         self.to(self.device)
 
     def forward(self, x):
         # Out ← [?, A, F, F]
-        x = F.relu(self.BN_1(self.conv1(x)))
+        x = F.relu(self.BN_1(self.Conv_1(x)))
         # Out ← a [?, B, F, F], v [?, B, P, P, F, F]
         a,v = self.PrimaryCaps(x)
         # Out ← a [?, B, 1, 1, 1, F, F, K, K], v [?, B, C, P*P, 1, F, F, K, K]
-        a,v = self.ClassCaps(a, v)
-        # Out ← yhat [?, C], v [?, C, P*P, 1]
+        a,v = self.ConvCaps_1(a, v, self.device)
+        # Out ← a [?, C, F, F], v [?, C, P, P, F, F]
+        a,v = self.ConvRouting_1(a, v, self.device)
+        # Out ← a [?, C, 1, 1, 1, F, F, K, K], v [?, C, D, P*P, 1, F, F, K, K]
+        a,v = self.ConvCaps_2(a, v, self.device)
+        # Out ← a [?, D, F, F], v [?, D, P, P, F, F]
+        a,v = self.ConvRouting_2(a, v, self.device)
+        # Out ← a [?, D, 1, 1, 1, F, F, K, K], v [?, D, n_classes, P*P, 1, F, F, K, K]
+        a,v = self.ClassCaps(a, v, self.device)
+        # Out ← yhat [?, n_classes], v [?, n_classes, P, P]
         yhat, v = self.ClassRouting(a, v, self.device)
         return yhat
 
@@ -699,7 +721,7 @@ class VariationalCapsules(ImageWiseModels):
                     # forward
                     # track history if only in train
                     with torch.set_grad_enabled(phase == 'train'):
-                        inputs = torch.rand(12, 3, 32, 32)
+                        #inputs = torch.rand(12, 3, 32, 32)  # for debugging
                         y_pred = self(inputs)
                         loss = criterion(y_pred, labels)
                         # backward + optimize only if in training phase

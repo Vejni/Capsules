@@ -27,7 +27,8 @@ if __name__ == "__main__":
         lr_decay=0.9,
         lam_recon=0.392,
         pose_dim=4,
-        arch=[64,8,16,16]
+        batch_size=8,
+        arch=[64,16,16,16]
     )
 
     patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
@@ -37,7 +38,7 @@ if __name__ == "__main__":
     #patch_wise_model.test_separate_classes(args_patch_wise)
     path = patch_wise_model.save_model("./models/")
 
-    image_wise_model = BaseCNN(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
-    #image_wise_model.train_model(args_img_wise)
+    image_wise_model = VariationalCapsules(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
+    image_wise_model.train_model(args_img_wise)
     image_wise_model.test(args_img_wise)
     image_wise_model.save_model("./models/", "Variational")
