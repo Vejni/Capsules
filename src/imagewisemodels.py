@@ -2,12 +2,14 @@ import matplotlib.pyplot as plt
 
 from .patchwisemodel import PatchWiseModel
 
-from .CapsNet.capsulelayers import DenseCapsule, PrimaryCapsule
-from .CapsNet.capsulenet import caps_loss
+from .DynamicCaps.capsulelayers import DenseCapsule, PrimaryCapsule
+from .DynamicCaps.capsulenet import caps_loss
 
 import torch.nn.functional as F
 from .VarCaps import layers
 from .VarCaps import vb_routing 
+
+from .EMCaps import capsules
 
 from .datasets import MEANS, STD
 from torch.utils.data import DataLoader, ConcatDataset
@@ -48,6 +50,185 @@ class ImageWiseModels(nn.Module):
         plt.xlabel("Epochs")
         plt.ylabel("Acc")
         plt.legend(frameon=False)
+
+    def train_model(self, args):
+        print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        validation_transforms = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ])
+
+        if args.augment:
+            augmenting = [
+                transforms.Compose([
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomHorizontalFlip(p=1.),
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ])
+            ]
+
+            train_data_loader = DataLoader(
+                ConcatDataset([
+                    torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=t) for t in augmenting
+                ]), 
+                batch_size=args.batch_size, shuffle=True,  num_workers=args.workers
+            )
+        
+        else:
+            training_transforms = transforms.Compose([
+                transforms.RandomHorizontalFlip(),
+                transforms.RandomVerticalFlip(),
+                transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                transforms.ColorJitter(hue=.05, saturation=.05),
+                transforms.ToTensor(),
+                transforms.Normalize(mean=MEANS, std=STD)
+            ])
+            train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
+            train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        
+        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
+        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+
+        optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
+        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
+        criterion = nn.CrossEntropyLoss()
+
+        # keeping-track-of-losses 
+        self.train_losses = []
+        self.valid_losses = []
+        self.train_acc = []
+        self.val_acc = []
+        since = time.time()
+
+        best_model_wts = copy.deepcopy(self.state_dict())
+        best_acc = 0.0
+
+        for epoch in range(args.epochs):
+            print('Epoch {}/{}'.format(epoch+1, args.epochs))
+            print('-' * 10)
+
+            # Each epoch has a training and validation phase
+            for phase in ['train', 'val']:
+                if phase == 'train':
+                    super(ImageWiseModels, self).train()  # Set model to training mode
+                    dataloader = train_data_loader
+                else:
+                    super(ImageWiseModels, self).eval()   # Set model to evaluate mode
+                    dataloader = val_data_loader
+
+                running_loss = 0.0
+                running_corrects = 0
+
+                # Iterate over data.
+                for inputs, labels in tqdm(dataloader):
+                    inputs = inputs.to(self.device)
+                    labels = labels.to(self.device)
+                    inputs = self.patch_wise_model.features(inputs)
+
+                    # zero the parameter gradients
+                    optimizer.zero_grad()
+
+                    # forward
+                    # track history if only in train
+                    with torch.set_grad_enabled(phase == 'train'):
+                        #inputs = torch.rand(12, 3, 32, 32)  # for debugging
+                        y_pred = self(inputs)
+                        loss = criterion(y_pred, labels)
+                        # backward + optimize only if in training phase
+                        if phase == 'train':
+                            loss.backward()
+                            optimizer.step()
+
+                    # statistics
+                    _, predicted = torch.max(y_pred, 1)
+                    running_loss += loss.item() * inputs.size(0)
+                    running_corrects += (predicted == labels).float().sum()
+                if phase == 'train':
+                    scheduler.step()
+
+                epoch_loss = running_loss /len(dataloader.dataset)
+                epoch_acc = running_corrects.double() / len(dataloader.dataset)
+
+                print('{} Loss: {:.4f} Acc: {:.4f}'.format(
+                    phase, epoch_loss, epoch_acc))
+                
+                if phase == 'train':
+                    self.train_losses.append(epoch_loss)
+                    self.train_acc.append(epoch_acc)
+                else:
+                    self.valid_losses.append(epoch_loss)
+                    self.val_acc.append(epoch_acc)
+
+                # deep copy the model
+                if phase == 'val' and epoch_acc > best_acc:
+                    best_acc = epoch_acc
+                    best_model_wts = copy.deepcopy(self.state_dict())
+
+        time_elapsed = time.time() - since
+        print('Training complete in {:.0f}m {:.0f}s'.format(
+            time_elapsed // 60, time_elapsed % 60))
+        print('Best val Acc: {:4f}'.format(best_acc))
+
+        # load best model weights
+        self.load_state_dict(best_model_wts)    
+    
+    def test(self, args):
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
+
+        super(ImageWiseModels, self).eval()
+        with torch.no_grad():
+            patch_acc = 0
+            image_acc = 0
+            for inputs, labels in tqdm(test_data_loader):
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                inputs  = self.patch_wise_model.features(inputs)
+
+                y_pred = self(inputs) # No y in testing
+                _, predicted = torch.max(y_pred, 1)
+                patch_acc += (predicted == labels).sum().item()
+                        
+                # Majority voting
+                predicted = predicted.cpu()
+                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
+                confidence = np.round(confidence * 100, 2)
+
+                if labels.data[0].item()== maj_prob:
+                    image_acc += 1
+
+        patch_acc  /= len(test_data_loader.dataset)
+        image_acc /=  (len(test_data_loader.dataset)/12)
+
+        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
+        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
 
     def save_model(self, path, model_type):
         file_name = path + "imagewise_network_" + model_type + "_" +str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
@@ -131,179 +312,6 @@ class BaseCNN(ImageWiseModels):
             nn.Linear(32, args.classes) # NO softmax, bc it is in crossentropy loss
         )
         self.to(self.device)
-
-    def train_model(self, args):
-        print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
-        validation_transforms = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ])
-
-        if args.augment:
-            augmenting = [
-                transforms.Compose([
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ])
-            ]
-
-            train_data_loader = DataLoader(
-                ConcatDataset([
-                    torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=t) for t in augmenting
-                ]), 
-                batch_size=args.batch_size, shuffle=True,  num_workers=args.workers
-            )
-        
-        else:
-            training_transforms = transforms.Compose([
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                transforms.ColorJitter(hue=.05, saturation=.05),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=MEANS, std=STD)
-            ])
-            train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
-            train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
-        
-        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
-        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
-
-        optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
-        criterion = nn.CrossEntropyLoss()
-
-        # keeping-track-of-losses 
-        self.train_losses = []
-        self.valid_losses = []
-        self.train_acc = []
-        self.val_acc = []
-        since = time.time()
-
-        best_model_wts = copy.deepcopy(self.state_dict())
-        best_acc = 0.0
-
-        for epoch in range(args.epochs):
-            print('Epoch {}/{}'.format(epoch+1, args.epochs))
-            print('-' * 10)
-
-            # Each epoch has a training and validation phase
-            for phase in ['train', 'val']:
-                if phase == 'train':
-                    super(BaseCNN, self).train()  # Set model to training mode
-                    dataloader = train_data_loader
-                else:
-                    super(BaseCNN, self).eval()   # Set model to evaluate mode
-                    dataloader = val_data_loader
-
-                running_loss = 0.0
-                running_corrects = 0
-
-                # Iterate over data.
-                for inputs, labels in tqdm(dataloader):
-                    inputs = inputs.to(self.device)
-                    labels = labels.to(self.device)
-                    inputs = self.patch_wise_model.features(inputs)
-
-                    # zero the parameter gradients
-                    optimizer.zero_grad()
-
-                    # forward
-                    # track history if only in train
-                    with torch.set_grad_enabled(phase == 'train'):
-                        outputs = self(inputs)
-                        _, preds = torch.max(outputs, 1)
-                        loss = criterion(outputs, labels)
-
-                        # backward + optimize only if in training phase
-                        if phase == 'train':
-                            loss.backward()
-                            optimizer.step()
-
-                    # statistics
-                    running_loss += loss.item() * inputs.size(0)
-                    running_corrects += torch.sum(preds == labels.data)
-
-                epoch_loss = running_loss /len(dataloader.dataset)
-                epoch_acc = running_corrects.double() / len(dataloader.dataset)
-
-                print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-                    phase, epoch_loss, epoch_acc))
-                
-                if phase == 'train':
-                    self.train_losses.append(epoch_loss)
-                    self.train_acc.append(epoch_acc)
-                else:
-                    self.valid_losses.append(epoch_loss)
-                    self.val_acc.append(epoch_acc)
-
-                # deep copy the model
-                if phase == 'val' and epoch_acc > best_acc:
-                    best_acc = epoch_acc
-                    best_model_wts = copy.deepcopy(self.state_dict())
-
-        time_elapsed = time.time() - since
-        print('Training complete in {:.0f}m {:.0f}s'.format(
-            time_elapsed // 60, time_elapsed % 60))
-        print('Best val Acc: {:4f}'.format(best_acc))
-
-        # load best model weights
-        self.load_state_dict(best_model_wts)    
-    
-    def test(self, args):
-        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ]))
-        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
-
-        super(BaseCNN, self).eval()
-        with torch.no_grad():
-            patch_acc = 0
-            image_acc = 0
-            for inputs, labels in test_data_loader:
-                inputs = inputs.to(self.device)
-                labels = labels.to(self.device)
-                inputs  = self.patch_wise_model.features(inputs)
-                outputs = self(inputs)
-                _, predicted = torch.max(outputs.data, 1)
-
-                # Majority voting
-                predicted = predicted.cpu()
-                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
-                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
-                confidence = np.round(confidence * 100, 2)
-
-                if labels.data[0].item()== maj_prob:
-                    image_acc += 1
-
-        patch_acc  /= len(test_data_loader.dataset)
-        image_acc /=  (len(test_data_loader.dataset)/12)
-        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
-        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
 
 class DynamicCapsules(ImageWiseModels): 
     """
@@ -618,181 +626,65 @@ class VariationalCapsules(ImageWiseModels):
         yhat, v = self.ClassRouting(a, v, self.device)
         return yhat
 
-    def train_model(self, args):
-        print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
-        validation_transforms = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ])
+class EMCapsules(ImageWiseModels):
+    """A network with one ReLU convolutional layer followed by
+    a primary convolutional capsule layer and two more convolutional capsule layers.
 
-        if args.augment:
-            augmenting = [
-                transforms.Compose([
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ])
-            ]
+    Suppose image shape is 28x28x1, the feature maps change as follows:
+    1. ReLU Conv1
+        (_, 1, 28, 28) -> 5x5 filters, 32 out channels, stride 2 with padding
+        x -> (_, 32, 14, 14)
+    2. PrimaryCaps
+        (_, 32, 14, 14) -> 1x1 filter, 32 out capsules, stride 1, no padding
+        x -> pose: (_, 14, 14, 32x4x4), activation: (_, 14, 14, 32)
+    3. ConvCaps1
+        (_, 14, 14, 32x(4x4+1)) -> 3x3 filters, 32 out capsules, stride 2, no padding
+        x -> pose: (_, 6, 6, 32x4x4), activation: (_, 6, 6, 32)
+    4. ConvCaps2
+        (_, 6, 6, 32x(4x4+1)) -> 3x3 filters, 32 out capsules, stride 1, no padding
+        x -> pose: (_, 4, 4, 32x4x4), activation: (_, 4, 4, 32)
+    5. ClassCaps
+        (_, 4, 4, 32x(4x4+1)) -> 1x1 conv, 10 out capsules
+        x -> pose: (_, 10x4x4), activation: (_, 10)
 
-            train_data_loader = DataLoader(
-                ConcatDataset([
-                    torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=t) for t in augmenting
-                ]), 
-                batch_size=args.batch_size, shuffle=True,  num_workers=args.workers
-            )
-        
-        else:
-            training_transforms = transforms.Compose([
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomVerticalFlip(),
-                transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                transforms.ColorJitter(hue=.05, saturation=.05),
-                transforms.ToTensor(),
-                transforms.Normalize(mean=MEANS, std=STD)
-            ])
-            train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
-            train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
-        
-        val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
-        val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+        Note that ClassCaps only outputs activation for each class
 
-        optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
-        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
-        criterion = nn.CrossEntropyLoss()
+    Args:
+        A: output channels of normal conv
+        B: output channels of primary caps
+        C: output channels of 1st conv caps
+        D: output channels of 2nd conv caps
+        E: output channels of class caps (i.e. number of classes)
+        K: kernel of conv caps
+        P: size of square pose matrix
+        iters: number of EM iterations
+        ...
+    """
+    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
+        super(EMCapsules, self).__init__(input_size, classes, channels, output_size, patchwise_path)
 
-        # keeping-track-of-losses 
-        self.train_losses = []
-        self.valid_losses = []
-        self.train_acc = []
-        self.val_acc = []
-        since = time.time()
+        A, B, C, D, K, P = args.EM_arch
+        E = classes
+        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.conv1 = nn.Conv2d(in_channels=input_size[0], out_channels=A,
+                               kernel_size=5, stride=2, padding=2)
+        self.bn1 = nn.BatchNorm2d(num_features=A, eps=0.001,
+                                 momentum=0.1, affine=True)
+        self.relu1 = nn.ReLU(inplace=False)
+        self.primary_caps = capsules.PrimaryCaps(A, B, 1, P, stride=1)
+        self.conv_caps1 = capsules.ConvCaps(self.device, B, C, K, P, stride=2, iters=args.routings)
+        self.conv_caps2 = capsules.ConvCaps(self.device, C, D, K, P, stride=1, iters=args.routings)
+        self.class_caps = capsules.ConvCaps(self.device, D, E, 1, P, stride=1, iters=args.routings,
+                                        coor_add=True, w_shared=True)
+        self.to(self.device)
 
-        best_model_wts = copy.deepcopy(self.state_dict())
-        best_acc = 0.0
-
-        for epoch in range(args.epochs):
-            print('Epoch {}/{}'.format(epoch+1, args.epochs))
-            print('-' * 10)
-
-            # Each epoch has a training and validation phase
-            for phase in ['train', 'val']:
-                if phase == 'train':
-                    super(VariationalCapsules, self).train()  # Set model to training mode
-                    dataloader = train_data_loader
-                else:
-                    super(VariationalCapsules, self).eval()   # Set model to evaluate mode
-                    dataloader = val_data_loader
-
-                running_loss = 0.0
-                running_corrects = 0
-
-                # Iterate over data.
-                for inputs, labels in tqdm(dataloader):
-                    inputs = inputs.to(self.device)
-                    labels = labels.to(self.device)
-                    inputs = self.patch_wise_model.features(inputs)
-
-                    # zero the parameter gradients
-                    optimizer.zero_grad()
-
-                    # forward
-                    # track history if only in train
-                    with torch.set_grad_enabled(phase == 'train'):
-                        #inputs = torch.rand(12, 3, 32, 32)  # for debugging
-                        y_pred = self(inputs)
-                        loss = criterion(y_pred, labels)
-                        # backward + optimize only if in training phase
-                        if phase == 'train':
-                            loss.backward()
-                            optimizer.step()
-
-                    # statistics
-                    _, predicted = torch.max(y_pred, 1)
-                    running_loss += loss.item() * inputs.size(0)
-                    running_corrects += (predicted == labels).float().sum()
-                if phase == 'train':
-                    scheduler.step()
-
-                epoch_loss = running_loss /len(dataloader.dataset)
-                epoch_acc = running_corrects.double() / len(dataloader.dataset)
-
-                print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-                    phase, epoch_loss, epoch_acc))
-                
-                if phase == 'train':
-                    self.train_losses.append(epoch_loss)
-                    self.train_acc.append(epoch_acc)
-                else:
-                    self.valid_losses.append(epoch_loss)
-                    self.val_acc.append(epoch_acc)
-
-                # deep copy the model
-                if phase == 'val' and epoch_acc > best_acc:
-                    best_acc = epoch_acc
-                    best_model_wts = copy.deepcopy(self.state_dict())
-
-        time_elapsed = time.time() - since
-        print('Training complete in {:.0f}m {:.0f}s'.format(
-            time_elapsed // 60, time_elapsed % 60))
-        print('Best val Acc: {:4f}'.format(best_acc))
-
-        # load best model weights
-        self.load_state_dict(best_model_wts)    
-    
-    def test(self, args):
-        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ]))
-        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
-
-        super(VariationalCapsules, self).eval()
-        with torch.no_grad():
-            patch_acc = 0
-            image_acc = 0
-            for inputs, labels in tqdm(test_data_loader):
-                inputs = inputs.to(self.device)
-                labels = labels.to(self.device)
-                inputs  = self.patch_wise_model.features(inputs)
-
-                y_pred = self(inputs) # No y in testing
-                _, predicted = torch.max(y_pred, 1)
-                patch_acc += (predicted == labels).sum().item()
-                        
-                # Majority voting
-                predicted = predicted.cpu()
-                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
-                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
-                confidence = np.round(confidence * 100, 2)
-
-                if labels.data[0].item()== maj_prob:
-                    image_acc += 1
-
-        patch_acc  /= len(test_data_loader.dataset)
-        image_acc /=  (len(test_data_loader.dataset)/12)
-
-        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
-        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.bn1(x)
+        x = self.relu1(x)
+        x = self.primary_caps(x)
+        x = self.conv_caps1(x)
+        x = self.conv_caps2(x)
+        x = self.class_caps(x)
+        return x

@@ -1,6 +1,6 @@
 from src.datasets import set_seed
 from src.patchwisemodel import PatchWiseModel
-from src.imagewisemodels import BaseCNN, DynamicCapsules, VariationalCapsules
+from src.imagewisemodels import BaseCNN, DynamicCapsules, VariationalCapsules, EMCapsules
 from argparse import Namespace
 
 if __name__ == "__main__":
@@ -28,7 +28,8 @@ if __name__ == "__main__":
         lam_recon=0.392,
         pose_dim=4,
         batch_size=8,
-        arch=[64,16,16,16]
+        arch=[64,16,16,16],
+        EM_arch=[32,32,32,32,3,4]
     )
 
     patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
@@ -38,7 +39,7 @@ if __name__ == "__main__":
     #patch_wise_model.test_separate_classes(args_patch_wise)
     path = patch_wise_model.save_model("./models/")
 
-    image_wise_model = VariationalCapsules(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
+    image_wise_model = EMCapsules(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
     image_wise_model.train_model(args_img_wise)
     image_wise_model.test(args_img_wise)
     image_wise_model.save_model("./models/", "Variational")
