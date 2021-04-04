@@ -27,9 +27,14 @@ import copy
 import time
 import os
 
+# For testing we want to get a whole image in patches
 BATCH_SIZE = 12
 
 class ImageWiseModels(nn.Module):
+    """
+    Base Image-Wise model, variants inherit from this class
+    it assigns a hopefully trained patchwise net to the model to use for forward passes
+    """
     def __init__(self, input_size, classes, channels, output_size, patchwise_path):
         super(ImageWiseModels, self).__init__()
 
@@ -37,7 +42,10 @@ class ImageWiseModels(nn.Module):
         self.patch_wise_model.load(patchwise_path)
 
     def plot_metrics(self):
+        """ Plots accuracy and loss side-by-side """
+
         # Loss
+        plt.subplot(1, 2, 1)
         plt.plot(self.train_losses, label='Training loss')
         plt.plot(self.valid_losses, label='Validation loss')
         plt.xlabel("Epochs")
@@ -45,20 +53,27 @@ class ImageWiseModels(nn.Module):
         plt.legend(frameon=False)
 
         # Accuracy
+        plt.subplot(1, 2, 2)
         plt.plot(self.train_acc, label='Training Accuracy')
         plt.plot(self.val_acc, label='Validation Accuracy')
         plt.xlabel("Epochs")
         plt.ylabel("Acc")
         plt.legend(frameon=False)
 
-    def train_model(self, args):
-        print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+    def train_model(self, args, path=None):
+        """ Main Training loop with data augmentation, early stopping and scheduler """
+
+        print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ])
 
         if args.augment:
+            """
+            Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
+            """
             augmenting = [
                 transforms.Compose([
                     transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
@@ -112,21 +127,28 @@ class ImageWiseModels(nn.Module):
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
         val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
 
-        optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
-        scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
+        optimizer = optim.Adam(self.parameters(), lr=args.lr)
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
         criterion = nn.CrossEntropyLoss()
+        start_epoch = 0
 
-        # keeping-track-of-losses 
+        # If checkpoint provided load states
+        if path:
+            optimizer, start_epoch = self.load_ckp(path, optimizer)
+            print("Model loaded, trained for ", start_epoch, "epochs")
+
+        # keeping track of losses 
         self.train_losses = []
         self.valid_losses = []
         self.train_acc = []
         self.val_acc = []
         since = time.time()
 
+        # For "early stopping"
         best_model_wts = copy.deepcopy(self.state_dict())
-        best_acc = 0.0
+        best_acc = 0.
 
-        for epoch in range(args.epochs):
+        for epoch in range(start_epoch, args.epochs):
             print('Epoch {}/{}'.format(epoch+1, args.epochs))
             print('-' * 10)
 
@@ -145,30 +167,32 @@ class ImageWiseModels(nn.Module):
                 # Iterate over data.
                 for inputs, labels in tqdm(dataloader):
                     inputs = inputs.to(self.device)
-                    labels = labels.to(self.device)
                     inputs = self.patch_wise_model.features(inputs)
+                    labels = labels.to(self.device)
 
                     # zero the parameter gradients
                     optimizer.zero_grad()
 
-                    # forward
-                    # track history if only in train
+                    # Training here
                     with torch.set_grad_enabled(phase == 'train'):
-                        #inputs = torch.rand(12, 3, 32, 32)  # for debugging
-                        y_pred = self(inputs)
-                        loss = criterion(y_pred, labels)
+                        outputs = self(inputs)
+                        _, preds = torch.max(outputs, 1)
+                        loss = criterion(outputs, labels)
+
                         # backward + optimize only if in training phase
                         if phase == 'train':
                             loss.backward()
                             optimizer.step()
 
                     # statistics
-                    _, predicted = torch.max(y_pred, 1)
                     running_loss += loss.item() * inputs.size(0)
-                    running_corrects += (predicted == labels).float().sum()
+                    running_corrects += torch.sum(preds == labels.data)
+
+                # Adjust learning rate
                 if phase == 'train':
                     scheduler.step()
 
+                # Data metrics
                 epoch_loss = running_loss /len(dataloader.dataset)
                 epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
@@ -186,14 +210,22 @@ class ImageWiseModels(nn.Module):
                 if phase == 'val' and epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.state_dict())
+                    best_optimizer_wts = copy.deepcopy(optimizer.state_dict())
+                    best_epoch = epoch
 
+        # Finished
         time_elapsed = time.time() - since
         print('Training complete in {:.0f}m {:.0f}s'.format(
             time_elapsed // 60, time_elapsed % 60))
         print('Best val Acc: {:4f}'.format(best_acc))
 
-        # load best model weights
-        self.load_state_dict(best_model_wts)    
+        # load best model weights and save checkpoint
+        self.load_state_dict(best_model_wts)
+        self.checkpoint = {
+            'epoch': best_epoch + 1,
+            'state_dict': best_model_wts,
+            'optimizer': best_optimizer_wts
+        }
     
     def test(self, args):
         test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
@@ -244,7 +276,18 @@ class ImageWiseModels(nn.Module):
         except:
             print('Failed to load pre-trained network with path:', path)
 
+    def load_ckp(self, checkpoint_fpath, optimizer):
+        """ To continue training we need more than just saving the weights """
+        checkpoint = torch.load(checkpoint_fpath)
+        self.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        return optimizer, checkpoint['epoch']
+
+    def save_checkpoint(self, path):
+        torch.save(self.checkpoint, path)
+
 class BaseCNN(ImageWiseModels):
+    """ Simple CNN for baseline, inherits frmo ImageWiseModels """
     def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
         super(BaseCNN, self).__init__(input_size, classes, channels, output_size, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
@@ -289,6 +332,7 @@ class BaseCNN(ImageWiseModels):
         return x
     
     def set_linear_layer(self, args):
+        """ Pytorch has no nice way of connecting CNNs with the denselayers, this code sets the dimensions correctly on the fly """
         train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
@@ -315,15 +359,8 @@ class BaseCNN(ImageWiseModels):
 
 class DynamicCapsules(ImageWiseModels): 
     """
-    A Capsule Network 
-    :param input_size: data size = [channels, width, height]
-    :param classes: number of classes
-    :param routings: number of routing iterations
-    Shape:
-        - Input: (batch, channels, width, height), optional (batch, classes) .
-        - Output:((batch, classes), (batch, channels, width, height))
+    A Capsule Network adapted from https://github.com/XifengGuo/CapsNet-Pytorch
     """
- 
     def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
         super(DynamicCapsules, self).__init__(input_size, classes, channels, output_size, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
@@ -368,6 +405,7 @@ class DynamicCapsules(ImageWiseModels):
         return length, reconstruction.view(-1, *self.output_size)
 
     def train_model(self, args):
+        """ Need to overwrite it for changes """
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
@@ -555,7 +593,7 @@ class DynamicCapsules(ImageWiseModels):
 
 class VariationalCapsules(ImageWiseModels): 
     """
-    TODO
+    Capsule Routing via Variational Bayes based on https://github.com/fabio-deep/Variational-Capsule-Routing
     """
  
     def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):

@@ -18,7 +18,8 @@ import os
 
 class PatchWiseModel(nn.Module):
     """
-    TODO
+    A CNN classifier that is used by the image-wise networks to downscale the images
+    by feeding them though the convolutional layers of the trained patchwise net.
     """
     def __init__(self, input_size, classes, channels, output_size, original_architecture=False):
         super(PatchWiseModel, self).__init__()
@@ -26,6 +27,10 @@ class PatchWiseModel(nn.Module):
         self.classes = classes
 
         if original_architecture:
+            """
+            This is the original architecture proposed in: https://arxiv.org/abs/1803.04054
+            it is prone to overfit
+            """
             self.features = nn.Sequential(
                 # Block 1
                 nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
@@ -85,7 +90,9 @@ class PatchWiseModel(nn.Module):
                 nn.Conv2d(in_channels=256, out_channels=channels, kernel_size=1, stride=1),
             )
         else:
-            # Convolutional Layers
+            """
+            Smaller version using 10 conv layers instead of 16
+            """
             self.features = nn.Sequential(
                 # Block 1
                 nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
@@ -123,6 +130,7 @@ class PatchWiseModel(nn.Module):
                 nn.Conv2d(in_channels=64, out_channels=channels, kernel_size=1, stride=1),
             )
 
+        # The classification layer
         self.classifier = nn.Sequential(
             nn.Linear(channels * output_size[2] * output_size[1], classes),
         )
@@ -137,6 +145,7 @@ class PatchWiseModel(nn.Module):
         print("Using:", self.device)
 
     def initialize_weights(self):
+        """ As in https://arxiv.org/abs/1803.04054 """
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
@@ -165,6 +174,8 @@ class PatchWiseModel(nn.Module):
         return x
 
     def train_model(self, args, path=None):
+        """ Main Training loop with data augmentation, early stopping and scheduler """
+
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         validation_transforms = transforms.Compose([
@@ -173,6 +184,9 @@ class PatchWiseModel(nn.Module):
         ])
 
         if args.augment:
+            """
+            Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
+            """
             augmenting = [
                 transforms.Compose([
                     transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
@@ -231,17 +245,19 @@ class PatchWiseModel(nn.Module):
         criterion = nn.CrossEntropyLoss()
         start_epoch = 0
 
+        # If checkpoint provided load states
         if path:
             optimizer, start_epoch = self.load_ckp(path, optimizer)
             print("Model loaded, trained for ", start_epoch, "epochs")
 
-        # keeping-track-of-losses 
+        # keeping track of losses 
         self.train_losses = []
         self.valid_losses = []
         self.train_acc = []
         self.val_acc = []
         since = time.time()
 
+        # For "early stopping"
         best_model_wts = copy.deepcopy(self.state_dict())
         best_acc = 0.
 
@@ -269,8 +285,7 @@ class PatchWiseModel(nn.Module):
                     # zero the parameter gradients
                     optimizer.zero_grad()
 
-                    # forward
-                    # track history if only in train
+                    # Training here
                     with torch.set_grad_enabled(phase == 'train'):
                         outputs = self(inputs)
                         _, preds = torch.max(outputs, 1)
@@ -284,9 +299,12 @@ class PatchWiseModel(nn.Module):
                     # statistics
                     running_loss += loss.item() * inputs.size(0)
                     running_corrects += torch.sum(preds == labels.data)
+
+                # Adjust learning rate
                 if phase == 'train':
                     scheduler.step()
 
+                # Data metrics
                 epoch_loss = running_loss /len(dataloader.dataset)
                 epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
@@ -307,12 +325,13 @@ class PatchWiseModel(nn.Module):
                     best_optimizer_wts = copy.deepcopy(optimizer.state_dict())
                     best_epoch = epoch
 
+        # Finished
         time_elapsed = time.time() - since
         print('Training complete in {:.0f}m {:.0f}s'.format(
             time_elapsed // 60, time_elapsed % 60))
         print('Best val Acc: {:4f}'.format(best_acc))
 
-        # load best model weights
+        # load best model weights and save checkpoint
         self.load_state_dict(best_model_wts)
         self.checkpoint = {
             'epoch': best_epoch + 1,
@@ -321,7 +340,10 @@ class PatchWiseModel(nn.Module):
         }
     
     def plot_metrics(self):
+        """ Plots accuracy and loss side-by-side """
+
         # Loss
+        plt.subplot(1, 2, 1)
         plt.plot(self.train_losses, label='Training loss')
         plt.plot(self.valid_losses, label='Validation loss')
         plt.xlabel("Epochs")
@@ -329,6 +351,7 @@ class PatchWiseModel(nn.Module):
         plt.legend(frameon=False)
 
         # Accuracy
+        plt.subplot(1, 2, 2)
         plt.plot(self.train_acc, label='Training Accuracy')
         plt.plot(self.val_acc, label='Validation Accuracy')
         plt.xlabel("Epochs")
@@ -336,6 +359,7 @@ class PatchWiseModel(nn.Module):
         plt.legend(frameon=False)
 
     def test(self, args):
+        """ Test on patched dataset """
         test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
@@ -355,6 +379,7 @@ class PatchWiseModel(nn.Module):
         print('Test Accuracy of the model: {} %'.format(100 * correct / len(test_data_loader.dataset)))
     
     def test_separate_classes(self, args):
+        """ Tests the model on each class separately and reports the accuracies """
         test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
@@ -401,6 +426,7 @@ class PatchWiseModel(nn.Module):
             print('Failed to load pre-trained network with path:', path)
     
     def load_ckp(self, checkpoint_fpath, optimizer):
+        """ To continue training we need more than just saving the weights """
         checkpoint = torch.load(checkpoint_fpath)
         self.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])

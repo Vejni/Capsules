@@ -17,7 +17,7 @@ STD = [0.3731, 0.3243, 0.3199]
 IMAGE_SIZE = (2048, 2560)
 CROPPED_IMAGE_SIZE = (1536, 2048)
 GRADED_LABELS = ["Grade 1", "Grade 2", "Grade 3"]
-ICIAR_LABELS = ["Benign", "InSitu", "Invasive", "Normal"]
+BACH_LABELS = ["Benign", "InSitu", "Invasive", "Normal"]
 SEED = 123
 
 PATCH_SIZE = 512
@@ -95,7 +95,7 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
             transforms.ToTensor()
         ])
         data = torchvision.datasets.ImageFolder(root=root_dir+"/ICIAR2018_BACH_Challenge/Photos", transform=t) 
-        LABELS = ICIAR_LABELS
+        LABELS = BACH_LABELS
 
 
     train_size = int(training_set*len(data))
