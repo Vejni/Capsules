@@ -20,70 +20,108 @@ class PatchWiseModel(nn.Module):
     """
     TODO
     """
-    def __init__(self, input_size, classes, channels, output_size):
+    def __init__(self, input_size, classes, channels, output_size, original_architecture=False):
         super(PatchWiseModel, self).__init__()
         self.input_size = input_size
         self.classes = classes
 
-        # Convolutional Layers
-        self.features = nn.Sequential(
-            # Block 1
-            nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=16, out_channels=16, kernel_size=2, stride=2),
-            nn.BatchNorm2d(16),
-            nn.ReLU(inplace=True),
+        if original_architecture:
+            self.features = nn.Sequential(
+                # Block 1
+                nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(16),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(16),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=2, stride=2),
+                nn.BatchNorm2d(16),
+                nn.ReLU(inplace=True),
 
-            # Block 2
-            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=2, stride=2),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
+                # Block 2
+                nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(32),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(32),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=2, stride=2),
+                nn.BatchNorm2d(32),
+                nn.ReLU(inplace=True),
 
-            # Block 3
-            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
+                # Block 3
+                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
 
-            # Block 4
-            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
+                # Block 4
+                nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(128),
+                nn.ReLU(inplace=True),
 
-            # Block 5
-            nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
+                # Block 5
+                nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(256),
+                nn.ReLU(inplace=True),
 
-            nn.Conv2d(in_channels=256, out_channels=channels, kernel_size=1, stride=1),
-        )
+                nn.Conv2d(in_channels=256, out_channels=channels, kernel_size=1, stride=1),
+            )
+        else:
+            # Convolutional Layers
+            self.features = nn.Sequential(
+                # Block 1
+                nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(16),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(16),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=2, stride=2),
+                nn.BatchNorm2d(16),
+                nn.ReLU(inplace=True),
+
+                # Block 2
+                nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(32),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(32),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=2, stride=2),
+                nn.BatchNorm2d(32),
+                nn.ReLU(inplace=True),
+
+                # Block 3
+                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+                nn.BatchNorm2d(64),
+                nn.ReLU(inplace=True),
+
+                nn.Conv2d(in_channels=64, out_channels=channels, kernel_size=1, stride=1),
+            )
 
         self.classifier = nn.Sequential(
             nn.Linear(channels * output_size[2] * output_size[1], classes),
@@ -126,7 +164,7 @@ class PatchWiseModel(nn.Module):
         x = F.log_softmax(x, dim=1)
         return x
 
-    def train_model(self, args, path):
+    def train_model(self, args, path=None):
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         validation_transforms = transforms.Compose([
