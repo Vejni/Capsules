@@ -126,7 +126,7 @@ class PatchWiseModel(nn.Module):
         x = F.log_softmax(x, dim=1)
         return x
 
-    def train_model(self, args):
+    def train_model(self, args, path):
         print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         validation_transforms = transforms.Compose([
@@ -191,6 +191,11 @@ class PatchWiseModel(nn.Module):
         optimizer = optim.Adam(self.parameters(), lr=args.lr)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
         criterion = nn.CrossEntropyLoss()
+        start_epoch = 0
+
+        if path:
+            optimizer, start_epoch = self.load_ckp(path, optimizer)
+            print("Model loaded, trained for ", start_epoch, "epochs")
 
         # keeping-track-of-losses 
         self.train_losses = []
@@ -202,7 +207,7 @@ class PatchWiseModel(nn.Module):
         best_model_wts = copy.deepcopy(self.state_dict())
         best_acc = 0.
 
-        for epoch in range(args.epochs):
+        for epoch in range(start_epoch, args.epochs):
             print('Epoch {}/{}'.format(epoch+1, args.epochs))
             print('-' * 10)
 
@@ -261,6 +266,8 @@ class PatchWiseModel(nn.Module):
                 if phase == 'val' and epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.state_dict())
+                    best_optimizer_wts = copy.deepcopy(optimizer.state_dict())
+                    best_epoch = epoch
 
         time_elapsed = time.time() - since
         print('Training complete in {:.0f}m {:.0f}s'.format(
@@ -269,6 +276,11 @@ class PatchWiseModel(nn.Module):
 
         # load best model weights
         self.load_state_dict(best_model_wts)
+        self.checkpoint = {
+            'epoch': best_epoch + 1,
+            'state_dict': best_model_wts,
+            'optimizer': best_optimizer_wts
+        }
     
     def plot_metrics(self):
         # Loss
@@ -312,8 +324,8 @@ class PatchWiseModel(nn.Module):
         test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
 
 
-        class_correct = list(0. for i in range(3))
-        class_total = list(0. for i in range(3))
+        class_correct = list(0. for i in range(args.classes))
+        class_total = list(0. for i in range(args.classes))
 
         super(PatchWiseModel, self).eval()
         with torch.no_grad():
@@ -329,10 +341,13 @@ class PatchWiseModel(nn.Module):
                         class_correct[predicted[i]] += 1
                     class_total[labels[i]] += 1
 
-        for i in range(3):
+        for i in range(args.classes):
             print('Accuracy of %5s : %2d %%' % (
                 i, 100 * class_correct[i] / class_total[i]))
-    
+
+    def save_checkpoint(self, path):
+        torch.save(self.checkpoint, path)
+
     def save_model(self, path):
         file_name = path + "patchwise_network_" + str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
         torch.save(self.state_dict(), file_name)
@@ -346,3 +361,9 @@ class PatchWiseModel(nn.Module):
                 self.load_state_dict(torch.load(path))
         except:
             print('Failed to load pre-trained network with path:', path)
+    
+    def load_ckp(self, checkpoint_fpath, optimizer):
+        checkpoint = torch.load(checkpoint_fpath)
+        self.load_state_dict(checkpoint['state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        return optimizer, checkpoint['epoch']
