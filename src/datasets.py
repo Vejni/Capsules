@@ -1,5 +1,6 @@
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 import numpy as np
 import torchvision
 import random
@@ -14,7 +15,7 @@ TEST_SET = 0.15
 MEANS = [0.4731, 0.3757, 0.4117]
 STD = [0.3731, 0.3243, 0.3199]
 
-IMAGE_SIZE = (2048, 2560)
+IMAGE_SIZE = (2816, 3072)
 CROPPED_IMAGE_SIZE = (1536, 2048)
 GRADED_LABELS = ["Grade 1", "Grade 2", "Grade 3"]
 BACH_LABELS = ["Benign", "InSitu", "Invasive", "Normal"]
@@ -97,7 +98,6 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         data = torchvision.datasets.ImageFolder(root=root_dir+"/ICIAR2018_BACH_Challenge/Photos", transform=t) 
         LABELS = BACH_LABELS
 
-
     train_size = int(training_set*len(data))
     val_size = int(val_set*len(data))
     test_size = len(data) - (train_size + val_size)
@@ -154,7 +154,7 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
             torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
         i += 1
 
-    # Test images - TODO
+    # Test images
     i = 0
     for inputs, labels in tqdm(test_data_loader):
         input = inputs[0]
@@ -172,3 +172,21 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         for j, patch in enumerate(patches):
             torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
         i += 1
+
+def check_res(root_dir):
+    import matplotlib.pyplot as plt
+    sizes = {}
+    data = torchvision.datasets.ImageFolder(root=root_dir+"/Histopathological_Graded", transform=transforms.Compose([transforms.ToTensor()]))
+    data_loader = DataLoader(data , batch_size=1,  num_workers=0)
+    for inputs, _ in tqdm(data_loader):
+        t = inputs.shape
+        if t in sizes:
+            sizes[t] +=1
+        else:
+            sizes[t] = 1
+
+    x = [str((list(s)[2], list(s)[3])) for s in sizes.keys()]
+    y = [val for val in sizes.values()]
+    plt.pie(y, labels = x)
+    plt.show()
+
