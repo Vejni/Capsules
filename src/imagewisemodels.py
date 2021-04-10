@@ -211,8 +211,14 @@ class ImageWiseModels(nn.Module):
                 if phase == 'val' and epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.state_dict())
-                    best_optimizer_wts = copy.deepcopy(optimizer.state_dict())
-                    best_epoch = epoch
+                    self.checkpoint = {
+                        'epoch': epoch + 1,
+                        'state_dict': best_model_wts,
+                        'optimizer': optimizer.state_dict(),
+                        'loss': criterion
+                    }
+                    file_name = "checkpoint_"+ str(epoch + 1) + "_patchwise_network_" + self.time + ".ckpt"
+                    self.save_checkpoint(args.chechpoint_path + file_name)
 
         # Finished
         time_elapsed = time.time() - since
@@ -222,11 +228,6 @@ class ImageWiseModels(nn.Module):
 
         # load best model weights and save checkpoint
         self.load_state_dict(best_model_wts)
-        self.checkpoint = {
-            'epoch': best_epoch + 1,
-            'state_dict': best_model_wts,
-            'optimizer': best_optimizer_wts
-        }
     
     def test(self, args):
         test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
@@ -542,6 +543,14 @@ class DynamicCapsules(ImageWiseModels):
                 if phase == 'val' and epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.state_dict())
+                    self.checkpoint = {
+                        'epoch': epoch + 1,
+                        'state_dict': best_model_wts,
+                        'optimizer': optimizer.state_dict(),
+                        'loss': loss
+                    }
+                    file_name = "checkpoint_"+ str(epoch + 1) + "_patchwise_network_" + self.time + ".ckpt"
+                    self.save_checkpoint(args.chechpoint_path + file_name)
 
         time_elapsed = time.time() - since
         print('Training complete in {:.0f}m {:.0f}s'.format(
