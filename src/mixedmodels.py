@@ -31,6 +31,7 @@ class VariationalMixedCapsules(ImageWiseModels):
     def __init__(self, input_size, classes, channels, output_size, args, features=True):
         super(VariationalMixedCapsules, self).__init__(input_size, classes, channels, output_size)
 
+        self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.output_size = output_size
         self.n_classes = args.classes
@@ -362,6 +363,7 @@ class EffNet(ImageWiseModels):
     def __init__(self, input_size, classes, channels, output_size, args):
         super(EffNet, self).__init__(input_size, classes, channels, output_size)
 
+        self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.output_size = output_size
         self.n_classes = args.classes
