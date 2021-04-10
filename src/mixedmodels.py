@@ -373,6 +373,12 @@ class EffNet(ImageWiseModels):
             nn.ReLU(), 
             nn.Linear(128, self.n_classes)
         )
+
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        for param in self.model._fc.parameters():
+            param.requires_grad = True
         self.model.to(self.device)
 
         print(self.model)
