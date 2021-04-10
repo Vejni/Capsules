@@ -329,7 +329,7 @@ class PatchWiseModel(nn.Module):
                         'optimizer': optimizer.state_dict(),
                         'loss': criterion
                     }
-                    file_name = "checkpoint_"+ str(epoch+1) + "patchwise_network_" + self.time + ".ckpt"
+                    file_name = "checkpoint_"+ str(epoch + 1) + "_patchwise_network_" + self.time + ".ckpt"
                     self.save_checkpoint(args.chechpoint_path + file_name)
 
         # Finished

@@ -35,11 +35,12 @@ class ImageWiseModels(nn.Module):
     Base Image-Wise model, variants inherit from this class
     it assigns a hopefully trained patchwise net to the model to use for forward passes
     """
-    def __init__(self, input_size, classes, channels, output_size, patchwise_path):
+    def __init__(self, input_size, classes, channels, output_size, patchwise_path=None):
         super(ImageWiseModels, self).__init__()
 
         self.patch_wise_model = PatchWiseModel(input_size, classes, channels, output_size)
-        self.patch_wise_model.load(patchwise_path)
+        if patchwise_path is not None:
+            self.patch_wise_model.load(patchwise_path)
 
     def plot_metrics(self):
         """ Plots accuracy and loss side-by-side """
@@ -63,7 +64,7 @@ class ImageWiseModels(nn.Module):
     def train_model(self, args, path=None):
         """ Main Training loop with data augmentation, early stopping and scheduler """
 
-        print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),

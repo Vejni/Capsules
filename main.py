@@ -1,7 +1,7 @@
 from src.datasets import set_seed
 from src.patchwisemodel import PatchWiseModel
 from src.imagewisemodels import BaseCNN, DynamicCapsules, VariationalCapsules, EMCapsules
-from src.mixedmodels import VariationalMixedCapsules
+from src.mixedmodels import VariationalMixedCapsules, EffNet
 from argparse import Namespace
 
 if __name__ == "__main__":
@@ -33,12 +33,12 @@ if __name__ == "__main__":
         EM_arch=[32,32,32,32,3,4]
     )
     
-    patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
+    #patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
     #patch_wise_model.train_model(args_patch_wise)
     #patch_wise_model.plot_metrics()
     #patch_wise_model.test(args_patch_wise)
     #patch_wise_model.save_checkpoint("./models/")
-    path = patch_wise_model.save_model("./models/")
+    #path = patch_wise_model.save_model("./models/")
     """
     image_wise_model = BaseCNN(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
     image_wise_model.train_model(args_img_wise)
@@ -56,7 +56,7 @@ if __name__ == "__main__":
     image_wise_model.save_model("./models/", "Variational")
     """
 
-    image_wise_model = VariationalMixedCapsules(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise, features=False)
+    image_wise_model = EffNet(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], args=args_img_wise)
     image_wise_model.train_model(args_img_wise)
     image_wise_model.test(args_img_wise)
     image_wise_model.save_model("./models/", "VariationalMixed")
