@@ -373,6 +373,7 @@ class EffNet(ImageWiseModels):
             nn.ReLU(), 
             nn.Linear(128, self.n_classes)
         )
+        self.model.to(self.device)
 
         print(self.model)
         print("Parameters:", sum(p.numel() for p in self.model.parameters()))
