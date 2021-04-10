@@ -95,8 +95,11 @@ class VariationalMixedCapsules(ImageWiseModels):
         self.Conv_1 = nn.Conv2d(input_size[0], self.A, kernel_size=5, stride=2, bias=False)
         nn.init.kaiming_uniform_(self.Conv_1.weight)
 
-        self.Conv_2 = nn.Conv2d(self.A, self.A, kernel_size=4, stride=2, bias=False)
+        self.Conv_2 = nn.Conv2d(self.A, self.A, kernel_size=5, stride=2, bias=False)
         nn.init.kaiming_uniform_(self.Conv_2.weight)
+
+        self.Conv_3 = nn.Conv2d(self.A, self.A, kernel_size=4, stride=2, bias=False)
+        nn.init.kaiming_uniform_(self.Conv_3.weight)
 
         self.BN_1 = nn.BatchNorm2d(self.A)
         self.PrimaryCaps = layers.PrimaryCapsules2d(in_channels=self.A, out_caps=self.B,
@@ -140,6 +143,7 @@ class VariationalMixedCapsules(ImageWiseModels):
             x = F.relu(self.BN_1(self.Conv_1(x)))
             x = F.relu(self.BN_1(self.Conv_2(x)))
             x = F.relu(self.BN_1(self.Conv_2(x)))
+            x = F.relu(self.BN_1(self.Conv_3(x)))
         # Out ← a [?, B, F, F], v [?, B, P, P, F, F]
         a,v = self.PrimaryCaps(x)
         # Out ← a [?, B, 1, 1, 1, F, F, K, K], v [?, B, C, P*P, 1, F, F, K, K]
