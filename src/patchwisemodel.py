@@ -25,6 +25,7 @@ class PatchWiseModel(nn.Module):
         super(PatchWiseModel, self).__init__()
         self.input_size = input_size
         self.classes = classes
+        self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
 
         if original_architecture:
             """
@@ -322,8 +323,14 @@ class PatchWiseModel(nn.Module):
                 if phase == 'val' and epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.state_dict())
-                    best_optimizer_wts = copy.deepcopy(optimizer.state_dict())
-                    best_epoch = epoch
+                    self.checkpoint = {
+                        'epoch': epoch + 1,
+                        'state_dict': best_model_wts,
+                        'optimizer': optimizer.state_dict(),
+                        'loss': criterion
+                    }
+                    file_name = "checkpoint_"+ str(epoch+1) + "patchwise_network_" + self.time + ".ckpt"
+                    self.save_checkpoint("../models/checkpoints/" + file_name)
 
         # Finished
         time_elapsed = time.time() - since
@@ -333,11 +340,6 @@ class PatchWiseModel(nn.Module):
 
         # load best model weights and save checkpoint
         self.load_state_dict(best_model_wts)
-        self.checkpoint = {
-            'epoch': best_epoch + 1,
-            'state_dict': best_model_wts,
-            'optimizer': best_optimizer_wts
-        }
     
     def plot_metrics(self):
         """ Plots accuracy and loss side-by-side """
@@ -412,7 +414,7 @@ class PatchWiseModel(nn.Module):
         torch.save(self.checkpoint, path)
 
     def save_model(self, path):
-        file_name = path + "patchwise_network_" + str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
+        file_name = path + "patchwise_network_" + self.time + ".ckpt"
         torch.save(self.state_dict(), file_name)
         print("Model saved:", file_name)
         return file_name
