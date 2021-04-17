@@ -103,7 +103,7 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
             transforms.Resize(PATCH_SIZE),
             transforms.ToTensor()
         ])
-        data = torchvision.datasets.ImageFolder(root=root_dir+"TODO", transform=t) 
+        data = torchvision.datasets.ImageFolder(root=root_dir+"/BreaKHis_v1/histology_slides/breast", transform=t) 
         LABELS = BREAKHIS_LABELS
     else:
         print("Dataset not recognised")
@@ -126,11 +126,11 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
             for i in range(len(LABELS)):
                 if not os.path.exists(root_dir + t + "/" + LABELS[i]):
                     os.makedirs(root_dir + t + "/" + LABELS[i])
-        for inputs, labels in tqdm(train_data_loader):
+        for i, (inputs, labels) in tqdm(enumerate(train_data_loader)):
             torchvision.utils.save_image(inputs, root_dir + "/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + ".JPG")
-        for inputs, labels in tqdm(val_data_loader):
+        for i, (inputs, labels) in tqdm(enumerate(val_data_loader)):
             torchvision.utils.save_image(inputs, root_dir + "/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + ".JPG")
-        for inputs, labels in tqdm(test_data_loader):
+        for i, (inputs, labels) in tqdm(enumerate(test_data_loader)):
             torchvision.utils.save_image(inputs, root_dir + "/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + ".JPG")
     else:
         for mode in ["/imagewise_dataset/", "/patchwise_dataset/"]:

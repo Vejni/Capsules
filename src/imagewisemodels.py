@@ -39,6 +39,7 @@ class ImageWiseModels(nn.Module):
         super(ImageWiseModels, self).__init__()
 
         self.patch_wise_model = PatchWiseModel(input_size, classes, channels, output_size)
+        self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
         if patchwise_path is not None:
             self.patch_wise_model.load(patchwise_path)
 
@@ -532,6 +533,7 @@ class DynamicCapsules(ImageWiseModels):
     def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
         super(DynamicCapsules, self).__init__(input_size, classes, channels, output_size, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
+        self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.output_size = output_size
