@@ -76,30 +76,56 @@ class ImageWiseModels(nn.Module):
             Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
             """
             augmenting = [
+                # 0 degrees + flip
                 transforms.Compose([
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
                 transforms.Compose([
                     transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 90 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
                 transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
                     transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 180 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 270 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
@@ -127,6 +153,9 @@ class ImageWiseModels(nn.Module):
         
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
         val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+
+        print("Using ", len(train_data_loader.dataset), "training samples")
+        print("Using ", len(val_data_loader.dataset), "validation samples")
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
@@ -264,6 +293,62 @@ class ImageWiseModels(nn.Module):
         print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
         print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
 
+    def test_separate_classes(self, args):
+        """ Tests the model on each class separately and reports the accuracies """
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=MEANS, std=STD)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
+
+        tp = [0] * args.classes
+        tpfp = [0] * args.classes
+        tpfn = [0] * args.classes
+        precision = [0] * args.classes
+        recall = [0] * args.classes
+        f1 = [0] * args.classes
+
+        class_correct = list(0. for i in range(args.classes))
+        class_total = list(0. for i in range(args.classes))
+
+        super(PatchWiseModel, self).eval()
+        with torch.no_grad():
+            for images, labels in tqdm(test_data_loader):
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+                outputs = self(images)
+                _, predicted = torch.max(outputs, 1)
+                predicted = predicted.tolist()
+                labels = labels.tolist()
+                for i in range(len(predicted)):
+                    if predicted[i] == labels[i]:
+                        class_correct[predicted[i]] += 1
+                    class_total[labels[i]] += 1
+
+                for label in range(args.classes):
+                    t_labels = torch.sum(torch.tensor(labels) == label)
+                    p_labels = torch.sum(torch.tensor(predicted) == label)
+                    tp[label] += torch.sum(t_labels == (p_labels * 2 - 1))
+                    tpfp[label] += torch.sum(p_labels)
+                    tpfn[label] += torch.sum(t_labels)
+
+        for i in range(args.classes):
+            print('Accuracy of %5s : %2d %%' % (
+                i, 100 * class_correct[i] / class_total[i]))
+
+            precision[label] += (tp[label] / (tpfp[label] + 1e-8))
+            recall[label] += (tp[label] / (tpfn[label] + 1e-8))
+            f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
+
+            print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
+                    label,
+                    precision[label],
+                    recall[label],
+                    f1[label]
+                ))
+
+            print('')
+
     def save_model(self, path, model_type):
         file_name = path + "imagewise_network_" + model_type + "_" +str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
         torch.save(self.state_dict(), file_name)
@@ -358,6 +443,87 @@ class BaseCNN(ImageWiseModels):
             nn.Linear(32, args.classes) # NO softmax, bc it is in crossentropy loss
         )
         self.to(self.device)
+
+class NazeriCNN(ImageWiseModels):
+    """ Simple CNN for baseline, inherits frmo ImageWiseModels """
+    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
+        super(BaseCNN, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
+
+        self.features = nn.Sequential(
+            # Block 1
+            nn.Conv2d(in_channels=12 * channels, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+
+            # Block 2
+            nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=128, out_channels=128, kernel_size=2, stride=2),
+            nn.BatchNorm2d(128),
+            nn.ReLU(inplace=True),
+
+            nn.Conv2d(in_channels=128, out_channels=1, kernel_size=1, stride=1),
+        )
+
+        self.classifier = nn.Sequential(
+            nn.Linear(1 * 16 * 16, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5, inplace=True),
+
+            nn.Linear(128, 128),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5, inplace=True),
+
+            nn.Linear(128, 64),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.5, inplace=True),
+
+            nn.Linear(64, classes),
+        )
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.to(self.device)
+
+        self.set_linear_layer(args)
+
+        print(self)
+        print("Parameters:", sum(p.numel() for p in super(BaseCNN, self).parameters()))
+        print("Trainable parameters:", sum(p.numel() for p in super(BaseCNN, self).parameters() if p.requires_grad))
+        print("Using:", self.device)
+
+    def forward(self, x):
+        x = self.features(x)
+        x = x.view(x.size(0), -1)
+        x = self.classifier(x)
+        x = F.log_softmax(x, dim=1)
+        return x
+
+    def initialize_weights(self):
+        """ As in https://arxiv.org/abs/1803.04054 """
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight, nonlinearity='relu')
+                if m.bias is not None:
+                    m.bias.data.zero_()
+
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
+            elif isinstance(m, nn.Linear):
+                m.weight.data.normal_(0, 0.01)
+                m.bias.data.zero_()
 
 class DynamicCapsules(ImageWiseModels): 
     """

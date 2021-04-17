@@ -189,30 +189,56 @@ class PatchWiseModel(nn.Module):
             Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
             """
             augmenting = [
+                # 0 degrees + flip
                 transforms.Compose([
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
                 transforms.Compose([
                     transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 90 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
                 transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
                     transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 180 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 270 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
@@ -240,6 +266,9 @@ class PatchWiseModel(nn.Module):
         
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
         val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+
+        print("Using ", len(train_data_loader.dataset), "training samples")
+        print("Using ", len(val_data_loader.dataset), "validation samples")
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
@@ -388,6 +417,12 @@ class PatchWiseModel(nn.Module):
         ]))
         test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
 
+        tp = [0] * args.classes
+        tpfp = [0] * args.classes
+        tpfn = [0] * args.classes
+        precision = [0] * args.classes
+        recall = [0] * args.classes
+        f1 = [0] * args.classes
 
         class_correct = list(0. for i in range(args.classes))
         class_total = list(0. for i in range(args.classes))
@@ -406,9 +441,29 @@ class PatchWiseModel(nn.Module):
                         class_correct[predicted[i]] += 1
                     class_total[labels[i]] += 1
 
+                for label in range(args.classes):
+                    t_labels = torch.sum(torch.tensor(labels) == label)
+                    p_labels = torch.sum(torch.tensor(predicted) == label)
+                    tp[label] += torch.sum(t_labels == (p_labels * 2 - 1))
+                    tpfp[label] += torch.sum(p_labels)
+                    tpfn[label] += torch.sum(t_labels)
+
         for i in range(args.classes):
             print('Accuracy of %5s : %2d %%' % (
                 i, 100 * class_correct[i] / class_total[i]))
+
+            precision[label] += (tp[label] / (tpfp[label] + 1e-8))
+            recall[label] += (tp[label] / (tpfn[label] + 1e-8))
+            f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
+
+            print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
+                    label,
+                    precision[label],
+                    recall[label],
+                    f1[label]
+                ))
+
+            print('')
 
     def save_checkpoint(self, path):
         torch.save(self.checkpoint, path)

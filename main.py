@@ -14,7 +14,7 @@ if __name__ == "__main__":
         augment=True,
         workers=4,
         classes=3,
-        data_path="./data/Graded/patchwise_dataset"
+        data_path="./data/ICIAR2018/patchwise_dataset"
     )
 
     args_img_wise = Namespace(
@@ -23,7 +23,7 @@ if __name__ == "__main__":
         augment=True,
         workers=4,
         classes=3,
-        data_path="./data/Graded/imagewise_dataset",
+        data_path="./data/ICIAR2018/imagewise_dataset",
         routings=3,
         lr_decay=0.9,
         lam_recon=0.392,
@@ -33,10 +33,11 @@ if __name__ == "__main__":
         EM_arch=[32,32,32,32,3,4]
     )
     
-    #patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
+    patch_wise_model = PatchWiseModel(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64])
     #patch_wise_model.train_model(args_patch_wise)
     #patch_wise_model.plot_metrics()
     #patch_wise_model.test(args_patch_wise)
+    patch_wise_model.test_separate_classes(args_patch_wise)
     #patch_wise_model.save_checkpoint("./models/")
     #path = patch_wise_model.save_model("./models/")
     """
