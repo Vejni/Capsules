@@ -7,7 +7,6 @@ from tqdm import tqdm
 import torchvision
 import PIL
 
-from torch.autograd import Variable
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.nn as nn
@@ -21,10 +20,9 @@ class PatchWiseModel(nn.Module):
     A CNN classifier that is used by the image-wise networks to downscale the images
     by feeding them though the convolutional layers of the trained patchwise net.
     """
-    def __init__(self, input_size, classes, channels, output_size, original_architecture=False):
+    def __init__(self, args, original_architecture=False):
         super(PatchWiseModel, self).__init__()
-        self.input_size = input_size
-        self.classes = classes
+        self.name = args.name
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
 
         if original_architecture:
@@ -34,7 +32,7 @@ class PatchWiseModel(nn.Module):
             """
             self.features = nn.Sequential(
                 # Block 1
-                nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
+                nn.Conv2d(in_channels=args.input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
                 nn.BatchNorm2d(16),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
@@ -88,7 +86,7 @@ class PatchWiseModel(nn.Module):
                 nn.BatchNorm2d(256),
                 nn.ReLU(inplace=True),
 
-                nn.Conv2d(in_channels=256, out_channels=channels, kernel_size=1, stride=1),
+                nn.Conv2d(in_channels=256, out_channels=args.output_size[2], kernel_size=1, stride=1),
             )
         else:
             """
@@ -96,7 +94,7 @@ class PatchWiseModel(nn.Module):
             """
             self.features = nn.Sequential(
                 # Block 1
-                nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
+                nn.Conv2d(in_channels=args.input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
                 nn.BatchNorm2d(16),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
@@ -128,12 +126,12 @@ class PatchWiseModel(nn.Module):
                 nn.BatchNorm2d(64),
                 nn.ReLU(inplace=True),
 
-                nn.Conv2d(in_channels=64, out_channels=channels, kernel_size=1, stride=1),
+                nn.Conv2d(in_channels=64, out_channels=args.output_size[0], kernel_size=1, stride=1),
             )
 
         # The classification layer
         self.classifier = nn.Sequential(
-            nn.Linear(channels * output_size[2] * output_size[1], classes),
+            nn.Linear(args.output_size[0] * args.output_size[2] * args.output_size[1], args.classes),
         )
 
         self.initialize_weights()
@@ -161,12 +159,6 @@ class PatchWiseModel(nn.Module):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
 
-    def output(self, input_tensor):
-        super(PatchWiseModel, self).eval()
-        with torch.no_grad():
-            res = self.features(Variable(input_tensor))
-        return res.squeeze()
-
     def forward(self, x):
         x = self.features(x)
         x = x.view(x.size(0), -1)
@@ -177,7 +169,7 @@ class PatchWiseModel(nn.Module):
     def train_model(self, args, path=None):
         """ Main Training loop with data augmentation, early stopping and scheduler """
 
-        print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        print('Start training network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
@@ -189,41 +181,21 @@ class PatchWiseModel(nn.Module):
             Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
             """
             augmenting = [
-                # 0 degrees + flip
+                # 0 degrees
                 transforms.Compose([
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                # 90 degrees + flip
+                # 90 degrees
                 transforms.Compose([
                     transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 180 degrees
                 transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                # 180 degrees + flip
-                transforms.Compose([
-                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
                     transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
@@ -235,15 +207,39 @@ class PatchWiseModel(nn.Module):
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
                 ])
             ]
+
+            if args.flip:
+                augmenting += [
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ])
+                ]
 
             train_data_loader = DataLoader(
                 ConcatDataset([
@@ -358,7 +354,7 @@ class PatchWiseModel(nn.Module):
                         'optimizer': optimizer.state_dict(),
                         'loss': criterion
                     }
-                    file_name = "checkpoint_"+ str(epoch + 1) + "_patchwise_network_" + self.time + ".ckpt"
+                    file_name = "checkpoint_"+ str(epoch + 1) + args.name + self.time + ".ckpt"
                     self.save_checkpoint(args.chechpoint_path + file_name)
 
         # Finished
@@ -469,7 +465,7 @@ class PatchWiseModel(nn.Module):
         torch.save(self.checkpoint, path)
 
     def save_model(self, path):
-        file_name = path + "patchwise_network_" + self.time + ".ckpt"
+        file_name = path + self.name + self.time + ".ckpt"
         torch.save(self.state_dict(), file_name)
         print("Model saved:", file_name)
         return file_name
@@ -477,7 +473,7 @@ class PatchWiseModel(nn.Module):
     def load(self, path):
         try:
             if os.path.exists(path):
-                print('Loading "patch-wise" model...')
+                print('Loading model...')
                 self.load_state_dict(torch.load(path))
         except:
             print('Failed to load pre-trained network with path:', path)

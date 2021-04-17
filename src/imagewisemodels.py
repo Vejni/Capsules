@@ -30,37 +30,18 @@ import os
 # For testing we want to get a whole image in patches
 BATCH_SIZE = 12
 
-class ImageWiseModels(nn.Module):
+class ImageWiseModels(PatchWiseModel):
     """
     Base Image-Wise model, variants inherit from this class
     it assigns a hopefully trained patchwise net to the model to use for forward passes
     """
-    def __init__(self, input_size, classes, channels, output_size, patchwise_path=None):
-        super(ImageWiseModels, self).__init__()
+    def __init__(self, args, patchwise_path):
+        super(ImageWiseModels, self).__init__(args)
 
-        self.patch_wise_model = PatchWiseModel(input_size, classes, channels, output_size)
+        self.patch_wise_model = PatchWiseModel(args, original_architecture=False)
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
         if patchwise_path is not None:
             self.patch_wise_model.load(patchwise_path)
-
-    def plot_metrics(self):
-        """ Plots accuracy and loss side-by-side """
-
-        # Loss
-        plt.subplot(1, 2, 1)
-        plt.plot(self.train_losses, label='Training loss')
-        plt.plot(self.valid_losses, label='Validation loss')
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.legend(frameon=False)
-
-        # Accuracy
-        plt.subplot(1, 2, 2)
-        plt.plot(self.train_acc, label='Training Accuracy')
-        plt.plot(self.val_acc, label='Validation Accuracy')
-        plt.xlabel("Epochs")
-        plt.ylabel("Acc")
-        plt.legend(frameon=False)
 
     def train_model(self, args, path=None):
         """ Main Training loop with data augmentation, early stopping and scheduler """
@@ -77,41 +58,21 @@ class ImageWiseModels(nn.Module):
             Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
             """
             augmenting = [
-                # 0 degrees + flip
+                # 0 degrees
                 transforms.Compose([
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                # 90 degrees + flip
+                # 90 degrees
                 transforms.Compose([
                     transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 180 degrees
                 transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                # 180 degrees + flip
-                transforms.Compose([
-                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
                     transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
@@ -123,15 +84,39 @@ class ImageWiseModels(nn.Module):
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
                 ])
             ]
+
+            if args.flip:
+                augmenting += [
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ])
+                ]
 
             train_data_loader = DataLoader(
                 ConcatDataset([
@@ -294,95 +279,15 @@ class ImageWiseModels(nn.Module):
         print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
         print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
 
-    def test_separate_classes(self, args):
-        """ Tests the model on each class separately and reports the accuracies """
-        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
-        ]))
-        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
-
-        tp = [0] * args.classes
-        tpfp = [0] * args.classes
-        tpfn = [0] * args.classes
-        precision = [0] * args.classes
-        recall = [0] * args.classes
-        f1 = [0] * args.classes
-
-        class_correct = list(0. for i in range(args.classes))
-        class_total = list(0. for i in range(args.classes))
-
-        super(PatchWiseModel, self).eval()
-        with torch.no_grad():
-            for images, labels in tqdm(test_data_loader):
-                images = images.to(self.device)
-                labels = labels.to(self.device)
-                outputs = self(images)
-                _, predicted = torch.max(outputs, 1)
-                predicted = predicted.tolist()
-                labels = labels.tolist()
-                for i in range(len(predicted)):
-                    if predicted[i] == labels[i]:
-                        class_correct[predicted[i]] += 1
-                    class_total[labels[i]] += 1
-
-                for label in range(args.classes):
-                    t_labels = torch.sum(torch.tensor(labels) == label)
-                    p_labels = torch.sum(torch.tensor(predicted) == label)
-                    tp[label] += torch.sum(t_labels == (p_labels * 2 - 1))
-                    tpfp[label] += torch.sum(p_labels)
-                    tpfn[label] += torch.sum(t_labels)
-
-        for label in range(args.classes):
-            print('Accuracy of %5s : %2d %%' % (
-                label, 100 * class_correct[label] / class_total[label]))
-
-            precision[label] += (tp[label] / (tpfp[label] + 1e-8))
-            recall[label] += (tp[label] / (tpfn[label] + 1e-8))
-            f1[label] = 2 * precision[label] * recall[label] / (precision[label] + recall[label] + 1e-8)
-
-            print('{}:  \t Precision: {:.2f},  Recall: {:.2f},  F1: {:.2f}'.format(
-                    label,
-                    precision[label],
-                    recall[label],
-                    f1[label]
-                ))
-
-            print('')
-
-    def save_model(self, path, model_type):
-        file_name = path + "imagewise_network_" + model_type + "_" +str(time.strftime('%Y-%m-%d_%H-%M')) + ".ckpt"
-        torch.save(self.state_dict(), file_name)
-        print(file_name)
-        return file_name
-    
-    def load(self, path):
-        try:
-            if os.path.exists(path):
-                print('Loading "imagewise" model...')
-                self.load_state_dict(torch.load(path))
-        except:
-            print('Failed to load pre-trained network with path:', path)
-
-    def load_ckp(self, checkpoint_fpath, optimizer):
-        """ To continue training we need more than just saving the weights """
-        checkpoint = torch.load(checkpoint_fpath)
-        self.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
-        return optimizer, checkpoint['epoch']
-
-    def save_checkpoint(self, path):
-        torch.save(self.checkpoint, path)
-
 class BaseCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
-    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
-        super(BaseCNN, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+    def __init__(self, args, patchwise_path=None):
+        super(BaseCNN, self).__init__(args, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
 
         self.cnn_layers = nn.Sequential(
             # Convolutional Layer 1
-            nn.Conv2d(input_size[0], 32, kernel_size=5, stride=1, bias=False),
+            nn.Conv2d(args.input_size[0], 32, kernel_size=5, stride=1, bias=False),
             nn.BatchNorm2d(32),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(3, 1),
@@ -447,13 +352,13 @@ class BaseCNN(ImageWiseModels):
 
 class NazeriCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
-    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
-        super(NazeriCNN, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+    def __init__(self, args, patchwise_path=None):
+        super(NazeriCNN, self).__init__(args, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
 
         self.features = nn.Sequential(
             # Block 1
-            nn.Conv2d(in_channels=12 * channels, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_channels=12 * args.channels, out_channels=64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
@@ -490,7 +395,7 @@ class NazeriCNN(ImageWiseModels):
             nn.ReLU(inplace=True),
             nn.Dropout(0.5, inplace=True),
 
-            nn.Linear(64, classes),
+            nn.Linear(64, args.classes),
         )
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -530,33 +435,33 @@ class DynamicCapsules(ImageWiseModels):
     """
     A Capsule Network adapted from https://github.com/XifengGuo/CapsNet-Pytorch
     """
-    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
-        super(DynamicCapsules, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+    def __init__(self, args, patchwise_path=None):
+        super(DynamicCapsules, self).__init__(args, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.output_size = output_size
-        self.classes = classes
+        self.output_size = args.output_size
+        self.classes = args.classes
         self.routings = args.routings
 
         # Layer 1: Just a conventional Conv2D layer
-        self.conv1 = nn.Conv2d(output_size[0], 64, kernel_size=9, stride=1, padding=0)
+        self.conv1 = nn.Conv2d(args.output_size[0], 64, kernel_size=9, stride=1, padding=0)
 
         # Layer 2: Conv2D layer with `squash` activation, then reshape to [None, num_caps, dim_caps]
         self.primarycaps = PrimaryCapsule(64, 64, 8, kernel_size=9, stride=2, padding=0)
 
         # Layer 3: Capsule layer. Routing algorithm works here.
         self.digitcaps = DenseCapsule(in_num_caps=4608, in_dim_caps=8,
-                                      out_num_caps=classes, out_dim_caps=16, routings=self.routings, device=self.device)
+                                      out_num_caps=args.classes, out_dim_caps=16, routings=self.routings, device=self.device)
 
         # Decoder network.
         self.decoder = nn.Sequential(
-            nn.Linear(16*classes, 512),
+            nn.Linear(16*args.classes, 512),
             nn.ReLU(inplace=True),
             nn.Linear(512, 1024),
             nn.ReLU(inplace=True),
-            nn.Linear(1024, output_size[0] * output_size[1] * output_size[2]),
+            nn.Linear(1024, args.output_size[0] * args.output_size[1] * args.output_size[2]),
             nn.Sigmoid()
         )
 
@@ -587,41 +492,21 @@ class DynamicCapsules(ImageWiseModels):
             Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
             """
             augmenting = [
-                # 0 degrees + flip
+                # 0 degrees
                 transforms.Compose([
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                # 90 degrees + flip
+                # 90 degrees
                 transforms.Compose([
                     transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 180 degrees
                 transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                # 180 degrees + flip
-                transforms.Compose([
-                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
                     transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
@@ -633,15 +518,39 @@ class DynamicCapsules(ImageWiseModels):
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
                 ])
             ]
+
+            if args.flip:
+                augmenting += [
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ])
+                ]
 
             train_data_loader = DataLoader(
                 ConcatDataset([
@@ -661,7 +570,7 @@ class DynamicCapsules(ImageWiseModels):
             ])
             train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
             train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
-    
+        
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
         val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
 
@@ -805,13 +714,12 @@ class VariationalCapsules(ImageWiseModels):
     """
     Capsule Routing via Variational Bayes based on https://github.com/fabio-deep/Variational-Capsule-Routing
     """
- 
-    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
-        super(VariationalCapsules, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+    def __init__(self, args, patchwise_path=None):
+        super(VariationalCapsules, self).__init__(args, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.output_size = output_size
+        self.output_size = args.output_size
         self.n_classes = args.classes
         self.routings = args.routings
 
@@ -820,7 +728,7 @@ class VariationalCapsules(ImageWiseModels):
         self.A, self.B, self.C, self.D = args.arch
 
         # Layer 1: Just a conventional Conv2D layer
-        self.Conv_1 = nn.Conv2d(output_size[0], self.A, kernel_size=5, stride=2, bias=False)
+        self.Conv_1 = nn.Conv2d(self.output_size[0], self.A, kernel_size=5, stride=2, bias=False)
         nn.init.kaiming_uniform_(self.Conv_1.weight)
 
         self.BN_1 = nn.BatchNorm2d(self.A)

@@ -28,12 +28,12 @@ class VariationalMixedCapsules(ImageWiseModels):
     Capsule Routing via Variational Bayes based on https://github.com/fabio-deep/Variational-Capsule-Routing
     """
  
-    def __init__(self, input_size, classes, channels, output_size, args, features=True):
-        super(VariationalMixedCapsules, self).__init__(input_size, classes, channels, output_size)
+    def __init__(self, args, features=True):
+        super(VariationalMixedCapsules, self).__init__(args, None)
 
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.output_size = output_size
+        self.output_size = args.output_size
         self.n_classes = args.classes
         self.routings = args.routings
 
@@ -45,7 +45,7 @@ class VariationalMixedCapsules(ImageWiseModels):
         if features:
             self.features = nn.Sequential(
                 # Block 1
-                nn.Conv2d(in_channels=input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
+                nn.Conv2d(in_channels=args.input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
                 nn.BatchNorm2d(16),
                 nn.ReLU(inplace=True),
                 nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
@@ -77,14 +77,14 @@ class VariationalMixedCapsules(ImageWiseModels):
                 nn.BatchNorm2d(64),
                 nn.ReLU(inplace=True),
 
-                nn.Conv2d(in_channels=64, out_channels=channels, kernel_size=1, stride=1),
+                nn.Conv2d(in_channels=64, out_channels=args.output_size[2], kernel_size=1, stride=1),
             )
         else:
             self.features = None
 
 
         # Layer 1: Just a conventional Conv2D layer
-        self.Conv_1 = nn.Conv2d(input_size[0], self.A, kernel_size=5, stride=2, bias=False)
+        self.Conv_1 = nn.Conv2d(args.input_size[0], self.A, kernel_size=5, stride=2, bias=False)
         nn.init.kaiming_uniform_(self.Conv_1.weight)
 
         self.Conv_2 = nn.Conv2d(self.A, self.A, kernel_size=5, stride=2, bias=False)
@@ -155,7 +155,7 @@ class VariationalMixedCapsules(ImageWiseModels):
     def train_model(self, args, path=None):
         """ Main Training loop with data augmentation, early stopping and scheduler """
 
-        print('Start training patch-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        print('Start training network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
@@ -167,35 +167,65 @@ class VariationalMixedCapsules(ImageWiseModels):
             Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
             """
             augmenting = [
+                # 0 degrees
                 transforms.Compose([
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 90 degrees
                 transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 180 degrees
                 transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 270 degrees + flip
                 transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ])
             ]
+
+            if args.flip:
+                augmenting += [
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ])
+                ]
 
             train_data_loader = DataLoader(
                 ConcatDataset([
@@ -218,6 +248,9 @@ class VariationalMixedCapsules(ImageWiseModels):
         
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
         val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+
+        print("Using ", len(train_data_loader.dataset), "training samples")
+        print("Using ", len(val_data_loader.dataset), "validation samples")
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
@@ -333,7 +366,6 @@ class VariationalMixedCapsules(ImageWiseModels):
             for inputs, labels in tqdm(test_data_loader):
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
-                inputs  = self.patch_wise_model.features(inputs)
 
                 y_pred = self(inputs) # No y in testing
                 _, predicted = torch.max(y_pred, 1)
@@ -360,12 +392,12 @@ class EffNet(ImageWiseModels):
     TODO
     """
  
-    def __init__(self, input_size, classes, channels, output_size, args):
-        super(EffNet, self).__init__(input_size, classes, channels, output_size)
+    def __init__(self, args):
+        super(EffNet, self).__init__(args, None)
 
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.output_size = output_size
+        self.output_size = args.output_size
         self.n_classes = args.classes
 
         self.model = EfficientNet.from_pretrained('efficientnet-b0')
@@ -400,35 +432,65 @@ class EffNet(ImageWiseModels):
             Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
             """
             augmenting = [
+                # 0 degrees
                 transforms.Compose([
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 90 degrees
                 transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 180 degrees
                 transforms.Compose([
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
+                # 270 degrees + flip
                 transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ])
             ]
+
+            if args.flip:
+                augmenting += [
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ]),
+                    transforms.Compose([
+                        transforms.RandomVerticalFlip(p=1.),
+                        transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                        transforms.ColorJitter(hue=.05, saturation=.05),
+                        transforms.ToTensor(),
+                        transforms.Normalize(mean=MEANS, std=STD)
+                    ])
+                ]
 
             train_data_loader = DataLoader(
                 ConcatDataset([
@@ -451,6 +513,9 @@ class EffNet(ImageWiseModels):
         
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
         val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+
+        print("Using ", len(train_data_loader.dataset), "training samples")
+        print("Using ", len(val_data_loader.dataset), "validation samples")
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
@@ -566,9 +631,8 @@ class EffNet(ImageWiseModels):
             for inputs, labels in tqdm(test_data_loader):
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
-                inputs  = self.patch_wise_model.features(inputs)
 
-                y_pred = self(inputs) # No y in testing
+                y_pred = self.model(inputs) # No y in testing
                 _, predicted = torch.max(y_pred, 1)
                 patch_acc += (predicted == labels).sum().item()
                         

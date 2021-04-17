@@ -1,3 +1,4 @@
+from os.path import split
 import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -100,7 +101,7 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         LABELS = BACH_LABELS
     elif dataset == "BreakHis":
         t = transforms.Compose([
-            transforms.Resize(PATCH_SIZE),
+            transforms.Resize((PATCH_SIZE,PATCH_SIZE)),
             transforms.ToTensor()
         ])
         data = torchvision.datasets.ImageFolder(root=root_dir+"/BreaKHis_v1/histology_slides/breast", transform=t) 
