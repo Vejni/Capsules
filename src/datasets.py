@@ -19,6 +19,7 @@ IMAGE_SIZE = (2816, 3072)
 CROPPED_IMAGE_SIZE = (1536, 2048)
 GRADED_LABELS = ["Grade 1", "Grade 2", "Grade 3"]
 BACH_LABELS = ["Benign", "InSitu", "Invasive", "Normal"]
+BREAKHIS_LABELS = ["Benign", "Malignant"]
 SEED = 123
 
 PATCH_SIZE = 512
@@ -76,13 +77,13 @@ def compute_normalization_stats(root_dir,  test_set=TEST_SET, training_set=TRAIN
     print("Means:", mean)
     print("Std:", std)
 
-def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET, val_set=VALIDATION_SET, graded=True):
+def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET, val_set=VALIDATION_SET, dataset="Databiox"):
     from tqdm import tqdm
     set_seed(SEED)
     assert test_set + training_set + val_set == 1, "Train/Test/Val Set sizes incorrect"
     BATCH_SIZE = 1
 
-    if graded:
+    if dataset == "Databiox":
         t = transforms.Compose([
             transforms.Resize(IMAGE_SIZE),
             transforms.CenterCrop(CROPPED_IMAGE_SIZE),
@@ -90,13 +91,23 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
         ])
         data = torchvision.datasets.ImageFolder(root=root_dir+"/Histopathological_Graded", transform=t) 
         LABELS = GRADED_LABELS
-    else:
+    elif dataset == "BACH":
         t = transforms.Compose([
             transforms.Resize(CROPPED_IMAGE_SIZE),
             transforms.ToTensor()
         ])
         data = torchvision.datasets.ImageFolder(root=root_dir+"/ICIAR2018_BACH_Challenge/Photos", transform=t) 
         LABELS = BACH_LABELS
+    elif dataset == "BreakHis":
+        t = transforms.Compose([
+            transforms.Resize(PATCH_SIZE),
+            transforms.ToTensor()
+        ])
+        data = torchvision.datasets.ImageFolder(root=root_dir+"TODO", transform=t) 
+        LABELS = BREAKHIS_LABELS
+    else:
+        print("Dataset not recognised")
+        return
 
     train_size = int(training_set*len(data))
     val_size = int(val_set*len(data))
@@ -110,68 +121,80 @@ def split_test_train_val(root_dir, test_set=TEST_SET, training_set=TRAINING_SET,
     if not os.path.exists(root_dir):
         os.makedirs(root_dir)
 
-    for mode in ["/imagewise_dataset/", "/patchwise_dataset/"]:
+    if dataset == "BreakHis":
         for t in ["train", "test", "validation"]:
             for i in range(len(LABELS)):
-                if not os.path.exists(root_dir + mode + t + "/" + LABELS[i]):
-                    os.makedirs(root_dir + mode + t + "/" + LABELS[i])
+                if not os.path.exists(root_dir + t + "/" + LABELS[i]):
+                    os.makedirs(root_dir + t + "/" + LABELS[i])
+        for inputs, labels in tqdm(train_data_loader):
+            torchvision.utils.save_image(inputs, root_dir + "/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + ".JPG")
+        for inputs, labels in tqdm(val_data_loader):
+            torchvision.utils.save_image(inputs, root_dir + "/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + ".JPG")
+        for inputs, labels in tqdm(test_data_loader):
+            torchvision.utils.save_image(inputs, root_dir + "/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + ".JPG")
+    else:
+        for mode in ["/imagewise_dataset/", "/patchwise_dataset/"]:
+            for t in ["train", "test", "validation"]:
+                for i in range(len(LABELS)):
+                    if not os.path.exists(root_dir + mode + t + "/" + LABELS[i]):
+                        os.makedirs(root_dir + mode + t + "/" + LABELS[i])
 
-    # Training images
-    i = 0
-    for inputs, labels in tqdm(train_data_loader):
-        input = inputs[0]
-        # ImageWise
-        patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
-        patches = patches.permute(1,2,0,3,4).contiguous()
-        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
-        for j, patch in enumerate(patches):
-            torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
-        
-        # PatchWise
-        patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
-        patches = patches.permute(1,2,0,3,4).contiguous()
-        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
-        for j, patch in enumerate(patches):
-            torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
-        i += 1
+        # Training images
+        i = 0
+        for inputs, labels in tqdm(train_data_loader):
+            input = inputs[0]
+            # ImageWise
+            patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
+            patches = patches.permute(1,2,0,3,4).contiguous()
+            patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+            for j, patch in enumerate(patches):
+                torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+            
+            # PatchWise
+            patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
+            patches = patches.permute(1,2,0,3,4).contiguous()
+            patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+            for j, patch in enumerate(patches):
+                torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/train/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+            i += 1
 
-    # Validation images
-    i = 0
-    for inputs, labels in tqdm(val_data_loader):
-        input = inputs[0]
-        # ImageWise
-        patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
-        patches = patches.permute(1,2,0,3,4).contiguous()
-        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
-        for j, patch in enumerate(patches):
-            torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
-        
-        # PatchWise
-        patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
-        patches = patches.permute(1,2,0,3,4).contiguous()
-        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
-        for j, patch in enumerate(patches):
-            torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
-        i += 1
+        # Validation images
+        i = 0
+        for inputs, labels in tqdm(val_data_loader):
+            input = inputs[0]
+            # ImageWise
+            patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
+            patches = patches.permute(1,2,0,3,4).contiguous()
+            patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+            for j, patch in enumerate(patches):
+                torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+            
+            # PatchWise
+            patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
+            patches = patches.permute(1,2,0,3,4).contiguous()
+            patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+            for j, patch in enumerate(patches):
+                torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/validation/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+            i += 1
 
-    # Test images
-    i = 0
-    for inputs, labels in tqdm(test_data_loader):
-        input = inputs[0]
-        # ImageWise
-        patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
-        patches = patches.permute(1,2,0,3,4).contiguous()
-        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
-        for j, patch in enumerate(patches):
-            torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
-        
-        # PatchWise
-        patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
-        patches = patches.permute(1,2,0,3,4).contiguous()
-        patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
-        for j, patch in enumerate(patches):
-            torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
-        i += 1
+        # Test images
+        i = 0
+        for inputs, labels in tqdm(test_data_loader):
+            input = inputs[0]
+            # ImageWise
+            patches = input.unfold(1, PATCH_SIZE, PATCH_SIZE).unfold(2, PATCH_SIZE, PATCH_SIZE)
+            patches = patches.permute(1,2,0,3,4).contiguous()
+            patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+            for j, patch in enumerate(patches):
+                torchvision.utils.save_image(patch, root_dir + "/imagewise_dataset/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+            
+            # PatchWise
+            patches = input.unfold(1, PATCH_SIZE, STRIDE).unfold(2, PATCH_SIZE, STRIDE)
+            patches = patches.permute(1,2,0,3,4).contiguous()
+            patches = patches.contiguous().view(-1, 3, PATCH_SIZE, PATCH_SIZE)
+            for j, patch in enumerate(patches):
+                torchvision.utils.save_image(patch, root_dir + "/patchwise_dataset/test/" + LABELS[labels[0].item()] + "/image_" + str(i) + "patch_" + str(j) + ".JPG")
+            i += 1
 
 def check_res(root_dir):
     import matplotlib.pyplot as plt

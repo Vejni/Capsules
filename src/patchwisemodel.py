@@ -448,9 +448,9 @@ class PatchWiseModel(nn.Module):
                     tpfp[label] += torch.sum(p_labels)
                     tpfn[label] += torch.sum(t_labels)
 
-        for i in range(args.classes):
+        for label in range(args.classes):
             print('Accuracy of %5s : %2d %%' % (
-                i, 100 * class_correct[i] / class_total[i]))
+                label, 100 * class_correct[label] / class_total[label]))
 
             precision[label] += (tp[label] / (tpfp[label] + 1e-8))
             recall[label] += (tp[label] / (tpfn[label] + 1e-8))

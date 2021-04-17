@@ -332,9 +332,9 @@ class ImageWiseModels(nn.Module):
                     tpfp[label] += torch.sum(p_labels)
                     tpfn[label] += torch.sum(t_labels)
 
-        for i in range(args.classes):
+        for label in range(args.classes):
             print('Accuracy of %5s : %2d %%' % (
-                i, 100 * class_correct[i] / class_total[i]))
+                label, 100 * class_correct[label] / class_total[label]))
 
             precision[label] += (tp[label] / (tpfp[label] + 1e-8))
             recall[label] += (tp[label] / (tpfn[label] + 1e-8))
@@ -447,7 +447,7 @@ class BaseCNN(ImageWiseModels):
 class NazeriCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
     def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
-        super(BaseCNN, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+        super(NazeriCNN, self).__init__(input_size, classes, channels, output_size, patchwise_path)
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
 
         self.features = nn.Sequential(
@@ -581,31 +581,60 @@ class DynamicCapsules(ImageWiseModels):
         ])
 
         if args.augment:
+            """
+            Create versions of the dataset for each augmentation as in https://arxiv.org/abs/1803.04054 and others
+            """
             augmenting = [
+                # 0 degrees + flip
                 transforms.Compose([
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
-                    transforms.ColorJitter(hue=.05, saturation=.05),
-                    transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
-                ]),
-                transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
                 transforms.Compose([
                     transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 90 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
                 ]),
                 transforms.Compose([
-                    transforms.RandomHorizontalFlip(p=1.),
                     transforms.RandomVerticalFlip(p=1.),
-                    transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
+                    transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 180 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                # 270 degrees + flip
+                transforms.Compose([
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
+                    transforms.ColorJitter(hue=.05, saturation=.05),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=MEANS, std=STD)
+                ]),
+                transforms.Compose([
+                    transforms.RandomVerticalFlip(p=1.),
+                    transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
                     transforms.Normalize(mean=MEANS, std=STD)
@@ -630,9 +659,12 @@ class DynamicCapsules(ImageWiseModels):
             ])
             train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
             train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
-        
+    
         val_data = torchvision.datasets.ImageFolder(root=args.data_path + "/validation", transform=validation_transforms)
         val_data_loader = DataLoader(val_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
+
+        print("Using ", len(train_data_loader.dataset), "training samples")
+        print("Using ", len(val_data_loader.dataset), "validation samples")
 
         optimizer = optim.Adam(self.parameters(), lr=args.lr) # betas=(self.args.beta1, self.args.beta2)
         scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
