@@ -17,7 +17,7 @@ if __name__ == "__main__":
         classes=4,
         input_size=[3, 512, 512],
         output_size=[3, 64, 64],
-        test_stat=True,
+        predefined_stats=True,
         data_path="./data/ICIAR2018/patchwise_dataset",
         checkpoint_path="./models/Checkpoints/",
         name="_patchwise_"
@@ -41,7 +41,8 @@ if __name__ == "__main__":
         output_size=[3, 64, 64],
         data_path="./data/ICIAR2018/imagewise_dataset",
         checkpoint_path="./models/Checkpoints/",
-        name="_imagewise_"
+        name="_imagewise_",
+        predefined_stats=False
     )
     
     #patch_wise_model = PatchWiseModel(args_patch_wise)
@@ -51,8 +52,8 @@ if __name__ == "__main__":
     #patch_wise_model.test_separate_classes(args_patch_wise)
     #patch_wise_model.save_checkpoint("./models/")
     #path = patch_wise_model.save_model("./models/")
-    image_wise_model = EMCapsules(args_img_wise)
-    image_wise_model.train_model(args_img_wise)
+    image_wise_model = DynamicCapsules(args_img_wise)
+    image_wise_model.test_separate_classes(args_img_wise)
 
     """
     image_wise_model.test(args_img_wise)

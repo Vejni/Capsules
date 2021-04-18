@@ -51,9 +51,17 @@ class ImageWiseModels(PatchWiseModel):
 
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
+ 
+        if not args.predefined_stats:
+            means = [0.5, 0.5, 0.5]
+            std = [0.5, 0.5, 0.5]
+        else:
+            means = MEANS
+            std = STD
+
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
+            transforms.Normalize(mean=means, std=std)
         ])
 
         if args.augment:
@@ -65,28 +73,28 @@ class ImageWiseModels(PatchWiseModel):
                 transforms.Compose([
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ]),
                 # 90 degrees
                 transforms.Compose([
                     transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ]),
                 # 180 degrees
                 transforms.Compose([
                     transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ]),
                 # 270 degrees + flip
                 transforms.Compose([
                     transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ])
             ]
 
@@ -96,28 +104,28 @@ class ImageWiseModels(PatchWiseModel):
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ]),
                     transforms.Compose([
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ]),
                     transforms.Compose([
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ]),
                     transforms.Compose([
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ])
                 ]
 
@@ -135,7 +143,7 @@ class ImageWiseModels(PatchWiseModel):
                 transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
                 transforms.ColorJitter(hue=.05, saturation=.05),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=MEANS, std=STD)
+                transforms.Normalize(mean=means, std=std)
             ])
             train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
             train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
@@ -145,7 +153,6 @@ class ImageWiseModels(PatchWiseModel):
 
         print("Using ", len(train_data_loader.dataset), "training samples")
         print("Using ", len(val_data_loader.dataset), "validation samples")
-
         optimizer = optim.Adam(self.parameters(), lr=args.lr)
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
         criterion = nn.CrossEntropyLoss()
@@ -248,9 +255,16 @@ class ImageWiseModels(PatchWiseModel):
         self.load_state_dict(best_model_wts)
     
     def test(self, args):
+        if not args.predefined_stats:
+            means = [0.5, 0.5, 0.5]
+            std = [0.5, 0.5, 0.5]
+        else:
+            means = MEANS
+            std = STD
+
         test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
+            transforms.Normalize(mean=means, std=std)
         ]))
         test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
 
@@ -300,6 +314,54 @@ class ImageWiseModels(PatchWiseModel):
             print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc_maj))
             print('Test Accuracy of the model on with sum voting: {} %'.format(100 * image_acc_sum))
             print('Test Accuracy of the model on with max voting: {} %'.format(100 * image_acc_max))
+
+    def test_separate_classes(self, args):
+        """ Tests the model on each class separately and reports the accuracies """
+        if not args.predefined_stats:
+            means = [0.5, 0.5, 0.5]
+            std = [0.5, 0.5, 0.5]
+        else:
+            means = MEANS
+            std = STD
+
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=means, std=std)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
+
+        super(ImageWiseModels, self).eval()
+        with torch.no_grad():
+            for images, labels in tqdm(test_data_loader):
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+                images  = self.patch_wise_model.features(images)
+                outputs = self(images)
+                _, predicted = torch.max(outputs, 1)
+                predicted = predicted.tolist()
+                labels = labels.tolist()
+
+                conf_matrix = torch.zeros(args.classes, args.classes)
+                for t, p in zip(labels, predicted):
+                    conf_matrix[t, p] += 1
+
+                print('Confusion matrix\n', conf_matrix)
+
+                TP = conf_matrix.diag()
+                for c in range(args.classes):
+                    idx = torch.ones(args.classes).byte()
+                    idx[c] = 0
+                    # all non-class samples classified as non-class
+                    TN = conf_matrix[idx.nonzero()[:, None], idx.nonzero()].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
+                    # all non-class samples classified as class
+                    FP = conf_matrix[idx, c].sum()
+                    # all class samples not classified as class
+                    FN = conf_matrix[c, idx].sum()
+                    
+                    print('Class {}\nTP {}, TN {}, FP {}, FN {}'.format(
+                        c, TP[c], TN, FP, FN))
+                    print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
+                        TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP + TN + FP + FN))))
 
 class BaseCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
@@ -504,9 +566,17 @@ class DynamicCapsules(ImageWiseModels):
     def train_model(self, args):
         """ Need to overwrite it for changes """
         print('Start training image-wise network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
+        
+        if not args.predefined_stats:
+            means = [0.5, 0.5, 0.5]
+            std = [0.5, 0.5, 0.5]
+        else:
+            means = MEANS
+            std = STD
+
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
+            transforms.Normalize(mean=means, std=std)
         ])
 
         if args.augment:
@@ -518,28 +588,28 @@ class DynamicCapsules(ImageWiseModels):
                 transforms.Compose([
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ]),
                 # 90 degrees
                 transforms.Compose([
                     transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ]),
                 # 180 degrees
                 transforms.Compose([
                     transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ]),
                 # 270 degrees + flip
                 transforms.Compose([
                     transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                     transforms.ColorJitter(hue=.05, saturation=.05),
                     transforms.ToTensor(),
-                    transforms.Normalize(mean=MEANS, std=STD)
+                    transforms.Normalize(mean=means, std=std)
                 ])
             ]
 
@@ -549,28 +619,28 @@ class DynamicCapsules(ImageWiseModels):
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ]),
                     transforms.Compose([
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.RandomRotation((90, 90), resample=PIL.Image.BILINEAR),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ]),
                     transforms.Compose([
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.RandomRotation((180, 180), resample=PIL.Image.BILINEAR),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ]),
                     transforms.Compose([
                         transforms.RandomVerticalFlip(p=1.),
                         transforms.RandomRotation((270, 270), resample=PIL.Image.BILINEAR),
                         transforms.ColorJitter(hue=.05, saturation=.05),
                         transforms.ToTensor(),
-                        transforms.Normalize(mean=MEANS, std=STD)
+                        transforms.Normalize(mean=means, std=std)
                     ])
                 ]
 
@@ -588,7 +658,7 @@ class DynamicCapsules(ImageWiseModels):
                 transforms.RandomRotation(10, resample=PIL.Image.BILINEAR),
                 transforms.ColorJitter(hue=.05, saturation=.05),
                 transforms.ToTensor(),
-                transforms.Normalize(mean=MEANS, std=STD)
+                transforms.Normalize(mean=means, std=std)
             ])
             train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=training_transforms)
             train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
@@ -692,9 +762,16 @@ class DynamicCapsules(ImageWiseModels):
         self.load_state_dict(best_model_wts)    
     
     def test(self, args):
+        if not args.predefined_stats:
+            means = [0.5, 0.5, 0.5]
+            std = [0.5, 0.5, 0.5]
+        else:
+            means = MEANS
+            std = STD
+
         test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
             transforms.ToTensor(),
-            transforms.Normalize(mean=MEANS, std=STD)
+            transforms.Normalize(mean=means, std=std)
         ]))
         test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, num_workers=args.workers)
 
@@ -749,6 +826,54 @@ class DynamicCapsules(ImageWiseModels):
             print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc_maj))
             print('Test Accuracy of the model on with sum voting: {} %'.format(100 * image_acc_sum))
             print('Test Accuracy of the model on with max voting: {} %'.format(100 * image_acc_max))
+
+    def test_separate_classes(self, args):
+        """ Tests the model on each class separately and reports the accuracies """
+        if not args.predefined_stats:
+            means = [0.5, 0.5, 0.5]
+            std = [0.5, 0.5, 0.5]
+        else:
+            means = MEANS
+            std = STD
+
+        test_data = torchvision.datasets.ImageFolder(root=args.data_path + "/test", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=means, std=std)
+        ]))
+        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
+
+        super(DynamicCapsules, self).eval()
+        with torch.no_grad():
+            for inputs, labels in tqdm(test_data_loader):
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                inputs  = self.patch_wise_model.features(inputs)
+
+                y_pred, _ = self(inputs) # No y in testing
+                _, predicted = torch.max(y_pred, 1)
+
+                conf_matrix = torch.zeros(args.classes, args.classes)
+                for t, p in zip(labels, predicted):
+                    conf_matrix[t, p] += 1
+
+                print('Confusion matrix\n', conf_matrix)
+
+                TP = conf_matrix.diag()
+                for c in range(args.classes):
+                    idx = torch.ones(args.classes).byte()
+                    idx[c] = 0
+                    # all non-class samples classified as non-class
+                    TN = conf_matrix[idx.nonzero()[:, None], idx.nonzero()].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
+                    # all non-class samples classified as class
+                    FP = conf_matrix[idx, c].sum()
+                    # all class samples not classified as class
+                    FN = conf_matrix[c, idx].sum()
+                    
+                    print('Class {}\nTP {}, TN {}, FP {}, FN {}'.format(
+                        c, TP[c], TN, FP, FN))
+                    print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
+                        TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP + TN + FP + FN))))
+
 
 class VariationalCapsules(ImageWiseModels): 
     """
