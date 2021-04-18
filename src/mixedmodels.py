@@ -341,7 +341,7 @@ class VariationalMixedCapsules(ImageWiseModels):
                         'loss': criterion
                     }
                     file_name = "checkpoint_"+ str(epoch + 1) + "_patchwise_network_" + self.time + ".ckpt"
-                    self.save_checkpoint(args.chechpoint_path + file_name)
+                    self.save_checkpoint(args.checkpoint_path + file_name)
 
         # Finished
         time_elapsed = time.time() - since
@@ -606,7 +606,7 @@ class EffNet(ImageWiseModels):
                         'loss': criterion
                     }
                     file_name = "checkpoint_"+ str(epoch + 1) + "_patchwise_network_" + self.time + ".ckpt"
-                    self.save_checkpoint(args.chechpoint_path + file_name)
+                    self.save_checkpoint(args.checkpoint_path + file_name)
 
         # Finished
         time_elapsed = time.time() - since

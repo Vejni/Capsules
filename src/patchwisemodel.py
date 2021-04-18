@@ -359,7 +359,7 @@ class PatchWiseModel(nn.Module):
                         'loss': criterion
                     }
                     file_name = "checkpoint_"+ str(epoch + 1) + args.name + self.time + ".ckpt"
-                    self.save_checkpoint(args.chechpoint_path + file_name)
+                    self.save_checkpoint(args.checkpoint_path + file_name)
 
         # Finished
         time_elapsed = time.time() - since
