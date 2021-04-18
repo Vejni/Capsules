@@ -1,5 +1,3 @@
-import matplotlib.pyplot as plt
-
 from .patchwisemodel import PatchWiseModel
 
 from .DynamicCaps.capsulelayers import DenseCapsule, PrimaryCapsule
@@ -25,7 +23,6 @@ import numpy as np
 import torch
 import copy
 import time
-import os
 
 # For testing we want to get a whole image in patches
 BATCH_SIZE = 12
@@ -40,6 +37,12 @@ class ImageWiseModels(PatchWiseModel):
 
         self.patch_wise_model = PatchWiseModel(args, original_architecture=False)
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
+    
+        if "breakhis" in args.data_path.lower():
+            self.breakhis = True
+        else:
+            self.breakhis = False
+
         if patchwise_path is not None:
             self.patch_wise_model.load(patchwise_path)
 
@@ -254,7 +257,9 @@ class ImageWiseModels(PatchWiseModel):
         super(ImageWiseModels, self).eval()
         with torch.no_grad():
             patch_acc = 0
-            image_acc = 0
+            image_acc_maj = 0
+            image_acc_sum = 0
+            image_acc_max = 0
             for inputs, labels in tqdm(test_data_loader):
                 inputs = inputs.to(self.device)
                 labels = labels.to(self.device)
@@ -263,21 +268,38 @@ class ImageWiseModels(PatchWiseModel):
                 y_pred = self(inputs) # No y in testing
                 _, predicted = torch.max(y_pred, 1)
                 patch_acc += (predicted == labels).sum().item()
-                        
-                # Majority voting
-                predicted = predicted.cpu()
-                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
-                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
-                confidence = np.round(confidence * 100, 2)
+                
+                if not self.breakhis:
+                    # Voting
+                    predicted = predicted.cpu()
 
-                if labels.data[0].item()== maj_prob:
-                    image_acc += 1
+                    maj_prob = (args.classes - 1) - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+                    sum_prob = (args.classes - 1) - np.argmax(np.sum(np.exp(y_pred.data.cpu().numpy()), axis=0)[::-1])
+                    max_prob = (args.classes - 1) - np.argmax(np.max(np.exp(y_pred.data.cpu().numpy()), axis=0)[::-1])
+        
+                    confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
+                    confidence = np.round(confidence * 100, 2)
+
+                    if labels.data[0].item()== maj_prob:
+                        image_acc_maj += 1
+                        
+                    if labels.data[0].item()== sum_prob:
+                        image_acc_sum += 1
+                        
+                    if labels.data[0].item()== max_prob:
+                        image_acc_max += 1
 
         patch_acc  /= len(test_data_loader.dataset)
-        image_acc /=  (len(test_data_loader.dataset)/12)
-
         print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
-        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
+
+        if not self.breakhis:
+            image_acc_maj /=  (len(test_data_loader.dataset)/12)
+            image_acc_sum /=  (len(test_data_loader.dataset)/12)
+            image_acc_max /=  (len(test_data_loader.dataset)/12)
+
+            print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc_maj))
+            print('Test Accuracy of the model on with sum voting: {} %'.format(100 * image_acc_sum))
+            print('Test Accuracy of the model on with max voting: {} %'.format(100 * image_acc_max))
 
 class BaseCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
@@ -680,7 +702,9 @@ class DynamicCapsules(ImageWiseModels):
         with torch.no_grad():
             patch_acc = 0
             patch_loss = 0
-            image_acc = 0
+            image_acc_maj = 0
+            image_acc_sum = 0
+            image_acc_max = 0
             for inputs, labels in tqdm(test_data_loader):
                 labels = torch.zeros(labels.size(0), args.classes).scatter_(1, labels.view(-1, 1), 1.)  # change to one-hot coding
                 inputs = inputs.to(self.device)
@@ -694,21 +718,37 @@ class DynamicCapsules(ImageWiseModels):
                 patch_acc += (predicted == temp).sum().item()
                 patch_loss += caps_loss(labels, y_pred, inputs, x_recon, args.lam_recon).item() * inputs.size(0)  # sum up batch loss
         
-                # Majority voting
-                predicted = predicted.cpu()
-                maj_prob = 2 - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
-                confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
-                confidence = np.round(confidence * 100, 2)
+                if not self.breakhis:
+                    # Voting
+                    predicted = predicted.cpu()
 
-                if temp.data[0].item()== maj_prob:
-                    image_acc += 1
+                    maj_prob = (args.classes - 1) - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+                    sum_prob = (args.classes - 1) - np.argmax(np.sum(np.exp(y_pred.data.cpu().numpy()), axis=0)[::-1])
+                    max_prob = (args.classes - 1) - np.argmax(np.max(np.exp(y_pred.data.cpu().numpy()), axis=0)[::-1])
+        
+                    confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
+                    confidence = np.round(confidence * 100, 2)
 
-        patch_loss /= len(test_data_loader.dataset)
+                    if labels.data[0].item()== maj_prob:
+                        image_acc_maj += 1
+                        
+                    if labels.data[0].item()== sum_prob:
+                        image_acc_sum += 1
+                        
+                    if labels.data[0].item()== max_prob:
+                        image_acc_max += 1
+
         patch_acc  /= len(test_data_loader.dataset)
-        image_acc /=  (len(test_data_loader.dataset)/12)
-        print('Test Loss of the model: {} %'.format(patch_loss))
         print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
-        print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc))
+
+        if not self.breakhis:
+            image_acc_maj /=  (len(test_data_loader.dataset)/12)
+            image_acc_sum /=  (len(test_data_loader.dataset)/12)
+            image_acc_max /=  (len(test_data_loader.dataset)/12)
+
+            print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc_maj))
+            print('Test Accuracy of the model on with sum voting: {} %'.format(100 * image_acc_sum))
+            print('Test Accuracy of the model on with max voting: {} %'.format(100 * image_acc_max))
 
 class VariationalCapsules(ImageWiseModels): 
     """
@@ -783,47 +823,17 @@ class VariationalCapsules(ImageWiseModels):
         return yhat
 
 class EMCapsules(ImageWiseModels):
-    """A network with one ReLU convolutional layer followed by
-    a primary convolutional capsule layer and two more convolutional capsule layers.
-
-    Suppose image shape is 28x28x1, the feature maps change as follows:
-    1. ReLU Conv1
-        (_, 1, 28, 28) -> 5x5 filters, 32 out channels, stride 2 with padding
-        x -> (_, 32, 14, 14)
-    2. PrimaryCaps
-        (_, 32, 14, 14) -> 1x1 filter, 32 out capsules, stride 1, no padding
-        x -> pose: (_, 14, 14, 32x4x4), activation: (_, 14, 14, 32)
-    3. ConvCaps1
-        (_, 14, 14, 32x(4x4+1)) -> 3x3 filters, 32 out capsules, stride 2, no padding
-        x -> pose: (_, 6, 6, 32x4x4), activation: (_, 6, 6, 32)
-    4. ConvCaps2
-        (_, 6, 6, 32x(4x4+1)) -> 3x3 filters, 32 out capsules, stride 1, no padding
-        x -> pose: (_, 4, 4, 32x4x4), activation: (_, 4, 4, 32)
-    5. ClassCaps
-        (_, 4, 4, 32x(4x4+1)) -> 1x1 conv, 10 out capsules
-        x -> pose: (_, 10x4x4), activation: (_, 10)
-
-        Note that ClassCaps only outputs activation for each class
-
-    Args:
-        A: output channels of normal conv
-        B: output channels of primary caps
-        C: output channels of 1st conv caps
-        D: output channels of 2nd conv caps
-        E: output channels of class caps (i.e. number of classes)
-        K: kernel of conv caps
-        P: size of square pose matrix
-        iters: number of EM iterations
-        ...
     """
-    def __init__(self, input_size, classes, channels, output_size, patchwise_path, args):
-        super(EMCapsules, self).__init__(input_size, classes, channels, output_size, patchwise_path)
+    TODO
+    """
+    def __init__(self, args, patchwise_path=None):
+        super(EMCapsules, self).__init__(args, patchwise_path=patchwise_path)
 
         A, B, C, D, K, P = args.EM_arch
-        E = classes
+        E = args.classes
         print("Trained PatchWise Model ready to use:", self.patch_wise_model)
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.conv1 = nn.Conv2d(in_channels=input_size[0], out_channels=A,
+        self.conv1 = nn.Conv2d(in_channels=args.input_size[0], out_channels=A,
                                kernel_size=5, stride=2, padding=2)
         self.bn1 = nn.BatchNorm2d(num_features=A, eps=0.001,
                                  momentum=0.1, affine=True)

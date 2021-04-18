@@ -171,6 +171,10 @@ class PatchWiseModel(nn.Module):
 
         print('Start training network: {}\n'.format(time.strftime('%Y/%m/%d %H:%M')))
 
+        if args.test_stat:
+            MEANS = [0.5, 0.5, 0.5]
+            STD = [0.5, 0.5, 0.5]
+
         validation_transforms = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)

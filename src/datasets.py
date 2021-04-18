@@ -214,3 +214,4 @@ def check_res(root_dir):
     plt.pie(y, labels = x)
     plt.show()
 
+#split_test_train_val("C:/Marci/Suli/Dissertation/Repository/data/BreaKHis_v1", dataset="BreakHis")

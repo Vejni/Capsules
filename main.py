@@ -9,7 +9,7 @@ if __name__ == "__main__":
 
     args_patch_wise = Namespace(
         batch_size=32,
-        lr=0.0001,
+        lr=0.001,
         epochs=100,
         augment=True,
         flip=False,
@@ -17,13 +17,14 @@ if __name__ == "__main__":
         classes=4,
         input_size=[3, 512, 512],
         output_size=[3, 64, 64],
+        test_stat=True,
         data_path="./data/ICIAR2018/patchwise_dataset",
         checkpoint_path="./models/Checkpoints/",
         name="_patchwise_"
     )
 
     args_img_wise = Namespace(
-        lr=0.0001,
+        lr=0.001,
         epochs=100,
         augment=True,
         flip=False,
@@ -50,7 +51,7 @@ if __name__ == "__main__":
     #patch_wise_model.test_separate_classes(args_patch_wise)
     #patch_wise_model.save_checkpoint("./models/")
     #path = patch_wise_model.save_model("./models/")
-    image_wise_model = EffNet(args_img_wise)
+    image_wise_model = EMCapsules(args_img_wise)
     image_wise_model.train_model(args_img_wise)
 
     """
