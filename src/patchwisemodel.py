@@ -434,6 +434,7 @@ class PatchWiseModel(nn.Module):
             transforms.Normalize(mean=means, std=std)
         ]))
         test_data_loader = DataLoader(test_data, batch_size=args.batch_size, num_workers=args.workers)
+        conf_matrix = torch.zeros(args.classes, args.classes)
 
         super(PatchWiseModel, self).eval()
         with torch.no_grad():
@@ -445,27 +446,26 @@ class PatchWiseModel(nn.Module):
                 predicted = predicted.tolist()
                 labels = labels.tolist()
 
-                conf_matrix = torch.zeros(args.classes, args.classes)
                 for t, p in zip(labels, predicted):
                     conf_matrix[t, p] += 1
 
-                print('Confusion matrix\n', conf_matrix)
+        print('Confusion matrix\n', conf_matrix)
 
-                TP = conf_matrix.diag()
-                for c in range(args.classes):
-                    idx = torch.ones(args.classes).byte()
-                    idx[c] = 0
-                    # all non-class samples classified as non-class
-                    TN = conf_matrix[idx.nonzero()[:, None], idx.nonzero()].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
-                    # all non-class samples classified as class
-                    FP = conf_matrix[idx, c].sum()
-                    # all class samples not classified as class
-                    FN = conf_matrix[c, idx].sum()
-                    
-                    print('Class {}\nTP {}, TN {}, FP {}, FN {}'.format(
-                        c, TP[c], TN, FP, FN))
-                    print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
-                        TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP + TN + FP + FN))))
+        TP = conf_matrix.diag()
+        for c in range(args.classes):
+            idx = torch.ones(args.classes).byte()
+            idx[c] = 0
+            # all non-class samples classified as non-class
+            TN = conf_matrix[idx.nonzero()[:, None], idx.nonzero()].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
+            # all non-class samples classified as class
+            FP = conf_matrix[idx, c].sum()
+            # all class samples not classified as class
+            FN = conf_matrix[c, idx].sum()
+            
+            print('Class {}\nTP {}, TN {}, FP {}, FN {}'.format(
+                c, TP[c], TN, FP, FN))
+            print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
+                TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP + TN + FP + FN))))
 
     def save_checkpoint(self, path):
         torch.save(self.checkpoint, path)
