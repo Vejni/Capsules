@@ -383,7 +383,7 @@ class PatchWiseModel(nn.Module):
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
         plt.legend(frameon=False)
-        plt.savefig(path + "/loss.png")
+        plt.savefig(path + "loss.png")
 
         # Accuracy
         plt.subplot(1, 2, 2)
@@ -392,7 +392,7 @@ class PatchWiseModel(nn.Module):
         plt.xlabel("Epochs")
         plt.ylabel("Acc")
         plt.legend(frameon=False)
-        plt.savefig(path + "/accuracy.png")
+        plt.savefig(path + "accuracy.png")
 
         print(self.train_losses, self.valid_losses, self.train_acc, self.val_acc, sep="\n")
 
