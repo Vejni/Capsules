@@ -485,8 +485,6 @@ class NazeriCNN(ImageWiseModels):
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
 
-        self.set_linear_layer(args)
-
         print(self)
         print("Parameters:", sum(p.numel() for p in super(BaseCNN, self).parameters()))
         print("Trainable parameters:", sum(p.numel() for p in super(BaseCNN, self).parameters() if p.requires_grad))

@@ -373,7 +373,7 @@ class PatchWiseModel(nn.Module):
         # load best model weights and save checkpoint
         self.load_state_dict(best_model_wts)
     
-    def plot_metrics(self):
+    def plot_metrics(self, path):
         """ Plots accuracy and loss side-by-side """
 
         # Loss
@@ -383,6 +383,7 @@ class PatchWiseModel(nn.Module):
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
         plt.legend(frameon=False)
+        plt.savefig(path + "/loss.png")
 
         # Accuracy
         plt.subplot(1, 2, 2)
@@ -391,6 +392,9 @@ class PatchWiseModel(nn.Module):
         plt.xlabel("Epochs")
         plt.ylabel("Acc")
         plt.legend(frameon=False)
+        plt.savefig(path + "/accuracy.png")
+
+        print(self.train_losses, self.valid_losses, self.train_acc, self.val_acc, sep="\n")
 
     def test(self, args):
         """ Test on patched dataset """
