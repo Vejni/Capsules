@@ -86,7 +86,7 @@ class PatchWiseModel(nn.Module):
                 nn.BatchNorm2d(256),
                 nn.ReLU(inplace=True),
 
-                nn.Conv2d(in_channels=256, out_channels=args.output_size[2], kernel_size=1, stride=1),
+                nn.Conv2d(in_channels=256, out_channels=args.output_size[0], kernel_size=1, stride=1),
             )
         else:
             """
@@ -131,7 +131,7 @@ class PatchWiseModel(nn.Module):
 
         # The classification layer
         self.classifier = nn.Sequential(
-            nn.Linear(args.output_size[0] * args.output_size[2] * args.output_size[1], args.classes),
+            nn.Linear(args.output_size[0] * args.output_size[1] * args.output_size[2], args.classes),
         )
 
         self.initialize_weights()

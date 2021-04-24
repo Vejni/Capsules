@@ -502,7 +502,7 @@ class NazeriCNN(ImageWiseModels):
 
         self.features = nn.Sequential(
             # Block 1
-            nn.Conv2d(in_channels=12 * args.channels, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.Conv2d(in_channels=args.input_size[0], out_channels=64, kernel_size=3, stride=1, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
@@ -529,15 +529,15 @@ class NazeriCNN(ImageWiseModels):
         self.classifier = nn.Sequential(
             nn.Linear(1 * 16 * 16, 128),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5, inplace=True),
+            nn.Dropout(0.5),
 
             nn.Linear(128, 128),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5, inplace=True),
+            nn.Dropout(0.5),
 
             nn.Linear(128, 64),
             nn.ReLU(inplace=True),
-            nn.Dropout(0.5, inplace=True),
+            nn.Dropout(0.5),
 
             nn.Linear(64, args.classes),
         )
@@ -546,8 +546,8 @@ class NazeriCNN(ImageWiseModels):
         self.to(self.device)
 
         print(self)
-        print("Parameters:", sum(p.numel() for p in super(BaseCNN, self).parameters()))
-        print("Trainable parameters:", sum(p.numel() for p in super(BaseCNN, self).parameters() if p.requires_grad))
+        print("Parameters:", sum(p.numel() for p in super(NazeriCNN, self).parameters()))
+        print("Trainable parameters:", sum(p.numel() for p in super(NazeriCNN, self).parameters() if p.requires_grad))
         print("Using:", self.device)
 
     def forward(self, x):
