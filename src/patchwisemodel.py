@@ -458,10 +458,11 @@ class PatchWiseModel(nn.Module):
 
         TP = conf_matrix.diag()
         for c in range(args.classes):
-            idx = torch.ones(args.classes).byte()
+            idx = torch.ones(args.classes)
+            idx = idx.type(torch.BoolTensor)
             idx[c] = 0
             # all non-class samples classified as non-class
-            TN = conf_matrix[idx.nonzero()[:, None], idx.nonzero()].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
+            TN = conf_matrix[idx.nonzero(as_tuple=False)[:, None], idx.nonzero(as_tuple=False)].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
             # all non-class samples classified as class
             FP = conf_matrix[idx, c].sum()
             # all class samples not classified as class
@@ -469,8 +470,8 @@ class PatchWiseModel(nn.Module):
             
             print('Class {}\nTP {}, TN {}, FP {}, FN {}'.format(
                 c, TP[c], TN, FP, FN))
-            print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
-                TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP + TN + FP + FN))))
+            print('Sensitivity {:.2f}, Specificity {:.2f}, F1 {:.2f}, Accuracy {:.2f}'.format(
+                TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), ((TP[c] + TN) / (TP[c] + TN + FP + FN))))
 
     def save_checkpoint(self, path):
         torch.save(self.checkpoint, path)

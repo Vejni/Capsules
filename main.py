@@ -45,15 +45,15 @@ if __name__ == "__main__":
         predefined_stats=False
     )
     
-    #patch_wise_model = PatchWiseModel(args_patch_wise, original_architecture=True)
-    #patch_wise_model.train_model(args_patch_wise)
+    patch_wise_model = PatchWiseModel(args_patch_wise, original_architecture=True)
+    patch_wise_model.train_model(args_patch_wise)
     #patch_wise_model.plot_metrics()
     #patch_wise_model.test(args_patch_wise)
     #patch_wise_model.test_separate_classes(args_patch_wise)
     #patch_wise_model.save_checkpoint("./models/")
     #path = patch_wise_model.save_model("./models/")
-    image_wise_model = NazeriCNN(args_img_wise)
-    image_wise_model.train_model(args_img_wise)
+    #image_wise_model = NazeriCNN(args_img_wise)
+    #image_wise_model.train_model(args_img_wise)
 
     """
     image_wise_model.test(args_img_wise)
