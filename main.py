@@ -52,7 +52,7 @@ if __name__ == "__main__":
     #patch_wise_model.test_separate_classes(args_patch_wise)
     #patch_wise_model.save_checkpoint("./models/")
     #path = patch_wise_model.save_model("./models/")
-    image_wise_model = DynamicCapsules(args_img_wise)
+    image_wise_model = BaseCNN(args_img_wise)
     image_wise_model.test_separate_classes(args_img_wise)
 
     """

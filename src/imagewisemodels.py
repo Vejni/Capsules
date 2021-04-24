@@ -349,10 +349,11 @@ class ImageWiseModels(PatchWiseModel):
 
         TP = conf_matrix.diag()
         for c in range(args.classes):
-            idx = torch.ones(args.classes).byte()
+            idx = torch.ones(args.classes)
+            idx = idx.type(torch.BoolTensor)
             idx[c] = 0
             # all non-class samples classified as non-class
-            TN = conf_matrix[idx.nonzero()[:, None], idx.nonzero()].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
+            TN = conf_matrix[idx.nonzero(as_tuple=False)[:, None], idx.nonzero(as_tuple=False)].sum() #conf_matrix[idx[:, None], idx].sum() - conf_matrix[idx, c].sum()
             # all non-class samples classified as class
             FP = conf_matrix[idx, c].sum()
             # all class samples not classified as class
@@ -360,8 +361,8 @@ class ImageWiseModels(PatchWiseModel):
             
             print('Class {}\nTP {}, TN {}, FP {}, FN {}'.format(
                 c, TP[c], TN, FP, FN))
-            print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
-                TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP[c] + TN + FP + FN))))
+            print('Sensitivity {:.2f}, Specificity {:.2f}, F1 {:.2f}, Accuracy {:.2f}'.format(
+                TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), ((TP[c] + TN) / (TP[c] + TN + FP + FN))))
 
     def test_training(self, args):
         if not args.predefined_stats:
@@ -413,22 +414,21 @@ class ImageWiseModels(PatchWiseModel):
                         image_acc_max += 1
 
         patch_acc  /= len(train_data_loader.dataset)
-        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
+        print('Training Accuracy of the model: {} %'.format(100 * patch_acc))
 
         if not self.breakhis:
             image_acc_maj /=  (len(train_data_loader.dataset)/12)
             image_acc_sum /=  (len(train_data_loader.dataset)/12)
             image_acc_max /=  (len(train_data_loader.dataset)/12)
 
-            print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc_maj))
-            print('Test Accuracy of the model on with sum voting: {} %'.format(100 * image_acc_sum))
-            print('Test Accuracy of the model on with max voting: {} %'.format(100 * image_acc_max))
+            print('Training Accuracy of the model on with majority voting: {} %'.format(100 * image_acc_maj))
+            print('Training Accuracy of the model on with sum voting: {} %'.format(100 * image_acc_sum))
+            print('Training Accuracy of the model on with max voting: {} %'.format(100 * image_acc_max))
 
 class BaseCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
     def __init__(self, args, patchwise_path=None):
         super(BaseCNN, self).__init__(args, patchwise_path)
-        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
 
         self.cnn_layers = nn.Sequential(
             # Convolutional Layer 1
@@ -499,7 +499,6 @@ class NazeriCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
     def __init__(self, args, patchwise_path=None):
         super(NazeriCNN, self).__init__(args, patchwise_path)
-        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
 
         self.features = nn.Sequential(
             # Block 1
@@ -580,7 +579,6 @@ class DynamicCapsules(ImageWiseModels):
     """
     def __init__(self, args, patchwise_path=None):
         super(DynamicCapsules, self).__init__(args, patchwise_path)
-        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -939,7 +937,6 @@ class VariationalCapsules(ImageWiseModels):
     """
     def __init__(self, args, patchwise_path=None):
         super(VariationalCapsules, self).__init__(args, patchwise_path)
-        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.output_size = args.output_size
@@ -1014,7 +1011,7 @@ class EMCapsules(ImageWiseModels):
 
         A, B, C, D, K, P = args.EM_arch
         E = args.classes
-        print("Trained PatchWise Model ready to use:", self.patch_wise_model)
+
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.conv1 = nn.Conv2d(in_channels=args.input_size[0], out_channels=A,
                                kernel_size=5, stride=2, padding=2)
