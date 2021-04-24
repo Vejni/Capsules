@@ -361,7 +361,68 @@ class ImageWiseModels(PatchWiseModel):
             print('Class {}\nTP {}, TN {}, FP {}, FN {}'.format(
                 c, TP[c], TN, FP, FN))
             print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
-                TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP + TN + FP + FN))))
+                TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP[c] + TN + FP + FN))))
+
+    def test_training(self, args):
+        if not args.predefined_stats:
+            means = [0.5, 0.5, 0.5]
+            std = [0.5, 0.5, 0.5]
+        else:
+            means = MEANS
+            std = STD
+
+        train_data = torchvision.datasets.ImageFolder(root=args.data_path + "/train", transform=transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize(mean=means, std=std)
+        ]))
+        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, num_workers=args.workers)
+
+        super(ImageWiseModels, self).eval()
+        with torch.no_grad():
+            patch_acc = 0
+            image_acc_maj = 0
+            image_acc_sum = 0
+            image_acc_max = 0
+            for inputs, labels in tqdm(train_data_loader):
+                inputs = inputs.to(self.device)
+                labels = labels.to(self.device)
+                inputs  = self.patch_wise_model.features(inputs)
+
+                y_pred = self(inputs) # No y in testing
+                _, predicted = torch.max(y_pred, 1)
+                patch_acc += (predicted == labels).sum().item()
+                
+                if not self.breakhis:
+                    # Voting
+                    predicted = predicted.cpu()
+
+                    maj_prob = (args.classes - 1) - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
+                    sum_prob = (args.classes - 1) - np.argmax(np.sum(np.exp(y_pred.data.cpu().numpy()), axis=0)[::-1])
+                    max_prob = (args.classes - 1) - np.argmax(np.max(np.exp(y_pred.data.cpu().numpy()), axis=0)[::-1])
+        
+                    confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
+                    confidence = np.round(confidence * 100, 2)
+
+                    if labels.data[0].item()== maj_prob:
+                        image_acc_maj += 1
+                        
+                    if labels.data[0].item()== sum_prob:
+                        image_acc_sum += 1
+                        
+                    if labels.data[0].item()== max_prob:
+                        image_acc_max += 1
+
+        patch_acc  /= len(train_data_loader.dataset)
+        print('Test Accuracy of the model: {} %'.format(100 * patch_acc))
+
+        if not self.breakhis:
+            image_acc_maj /=  (len(train_data_loader.dataset)/12)
+            image_acc_sum /=  (len(train_data_loader.dataset)/12)
+            image_acc_max /=  (len(train_data_loader.dataset)/12)
+
+            print('Test Accuracy of the model on with majority voting: {} %'.format(100 * image_acc_maj))
+            print('Test Accuracy of the model on with sum voting: {} %'.format(100 * image_acc_sum))
+            print('Test Accuracy of the model on with max voting: {} %'.format(100 * image_acc_max))
 
 class BaseCNN(ImageWiseModels):
     """ Simple CNN for baseline, inherits frmo ImageWiseModels """
@@ -871,7 +932,6 @@ class DynamicCapsules(ImageWiseModels):
                 c, TP[c], TN, FP, FN))
             print('\Sensitivity {}, Specificity {}, F1 {}, Accuracy {}'.format(
                 TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), (TP[c] + TN + (TP + TN + FP + FN))))
-
 
 class VariationalCapsules(ImageWiseModels): 
     """
