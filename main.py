@@ -1,6 +1,6 @@
 from src.datasets import set_seed
 from src.patchwisemodel import PatchWiseModel
-from src.imagewisemodels import BaseCNN, DynamicCapsules, NazeriCNN, VariationalCapsules, EMCapsules
+from src.imagewisemodels import BaseCNN, DynamicCapsules, NazeriCNN, VariationalCapsules, SRCapsules
 from src.mixedmodels import VariationalMixedCapsules, EffNet
 from argparse import Namespace
 
@@ -53,7 +53,7 @@ if __name__ == "__main__":
     #patch_wise_model.plot_metrics()
     #patch_wise_model.save_checkpoint("./models/")
     #path = patch_wise_model.save_model("./models/")
-    image_wise_model = VariationalCapsules(args_img_wise, patch_wise_model)
+    image_wise_model = SRCapsules(args_img_wise, patch_wise_model)
     image_wise_model.train_model(args_img_wise)
     #image_wise_model.test(args_img_wise, True)
     #image_wise_model.test_separate_classes(args_img_wise)
