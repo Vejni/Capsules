@@ -36,7 +36,6 @@ if __name__ == "__main__":
         pose_dim=4,
         batch_size=8,
         arch=[64,16,16,16],
-        EM_arch=[32,32,32,32,3,4],
         input_size=[3, 64, 64],
         output_size=[3, 64, 64],
         data_path="./data/ICIAR2018/imagewise_dataset",
@@ -45,7 +44,7 @@ if __name__ == "__main__":
         predefined_stats=False
     )
     
-    patch_wise_model = PatchWiseModel(args_patch_wise)
+    #patch_wise_model = PatchWiseModel(args_patch_wise)
     #patch_wise_model.train_model(args_patch_wise)
     #patch_wise_model.test(args_patch_wise, voting=True)
     #patch_wise_model.test_separate_classes(args_patch_wise)
@@ -53,10 +52,11 @@ if __name__ == "__main__":
     #patch_wise_model.plot_metrics()
     #patch_wise_model.save_checkpoint("./models/")
     #path = patch_wise_model.save_model("./models/")
-    image_wise_model = SRCapsules(args_img_wise, patch_wise_model)
+    image_wise_model = EffNet(args_img_wise)
     image_wise_model.train_model(args_img_wise)
     #image_wise_model.test(args_img_wise, True)
     #image_wise_model.test_separate_classes(args_img_wise)
+    
 
     """
     image_wise_model.save_model("./models/", "BaseCNN")

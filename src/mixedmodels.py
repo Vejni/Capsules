@@ -28,8 +28,8 @@ class VariationalMixedCapsules(Model):
     Capsule Routing via Variational Bayes based on https://github.com/fabio-deep/Variational-Capsule-Routing
     """
  
-    def __init__(self, args, features=True):
-        super(VariationalMixedCapsules, self).__init__(args, None)
+    def __init__(self, args):
+        super(VariationalMixedCapsules, self).__init__(args)
         self.output_size = args.output_size
         self.n_classes = args.classes
         self.routings = args.routings
@@ -39,45 +39,42 @@ class VariationalMixedCapsules(Model):
         self.A, self.B, self.C, self.D = args.arch
         K = 12
 
-        if features:
-            self.features = nn.Sequential(
-                # Block 1
-                nn.Conv2d(in_channels=args.input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(16),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(16),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=16, out_channels=16, kernel_size=2, stride=2),
-                nn.BatchNorm2d(16),
-                nn.ReLU(inplace=True),
+        self.features = nn.Sequential(
+            # Block 1
+            nn.Conv2d(in_channels=args.input_size[0], out_channels=16, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=16, out_channels=16, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=16, out_channels=16, kernel_size=2, stride=2),
+            nn.BatchNorm2d(16),
+            nn.ReLU(inplace=True),
 
-                # Block 2
-                nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(32),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(32),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=32, out_channels=32, kernel_size=2, stride=2),
-                nn.BatchNorm2d(32),
-                nn.ReLU(inplace=True),
+            # Block 2
+            nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=32, out_channels=32, kernel_size=2, stride=2),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
 
-                # Block 3
-                nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(64),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
-                nn.BatchNorm2d(64),
-                nn.ReLU(inplace=True),
-                nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
-                nn.BatchNorm2d(64),
-                nn.ReLU(inplace=True),
+            # Block 3
+            nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=2, stride=2),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
 
-                nn.Conv2d(in_channels=64, out_channels=args.output_size[2], kernel_size=1, stride=1),
-            )
-        else:
-            self.features = None
+            nn.Conv2d(in_channels=64, out_channels=args.output_size[0], kernel_size=1, stride=1),
+        )
 
         # Layer 1: Just a conventional Conv2D layer
         self.Conv_1 = nn.Conv2d(args.input_size[0], self.A, kernel_size=5, stride=2, bias=False)
@@ -124,16 +121,9 @@ class VariationalMixedCapsules(Model):
         self.init_device()
 
     def forward(self, x):
-        if self.features:
-            x = self.features(x)
-            # Out ← [?, A, F, F]
-            x = F.relu(self.BN_1(self.Conv_1(x)))
-        else:
-            # Out ← [?, A, F, F]
-            x = F.relu(self.BN_1(self.Conv_1(x)))
-            x = F.relu(self.BN_1(self.Conv_2(x)))
-            x = F.relu(self.BN_1(self.Conv_2(x)))
-            x = F.relu(self.BN_1(self.Conv_3(x)))
+        x = self.features(x)
+        # Out ← [?, A, F, F]
+        x = F.relu(self.BN_1(self.Conv_1(x)))
         # Out ← a [?, B, F, F], v [?, B, P, P, F, F]
         a,v = self.PrimaryCaps(x)
         # Out ← a [?, B, 1, 1, 1, F, F, K, K], v [?, B, C, P*P, 1, F, F, K, K]
@@ -156,7 +146,7 @@ class EffNet(Model):
     """
  
     def __init__(self, args):
-        super(EffNet, self).__init__(args, None)
+        super(EffNet, self).__init__(args)
 
         self.time = str(time.strftime('%Y-%m-%d_%H-%M'))
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

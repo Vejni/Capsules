@@ -320,7 +320,6 @@ class VariationalCapsules(ImageWiseModels):
         yhat, v = self.ClassRouting(a, v, self.device)
         return yhat
 
-
 class SRCapsules(ImageWiseModels):
     """
     Self Routing Capsules based on https://github.com/coder3000/SR-CapsNet
