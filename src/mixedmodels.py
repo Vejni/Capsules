@@ -1,23 +1,18 @@
+# Base model
 from .model import Model
 
-import torch.nn.functional as F
+# Variational Capsules
 from .VarCaps import layers
 from .VarCaps import vb_routing 
 
+# EfficientNet
 from efficientnet_pytorch import EfficientNet
 
-from .datasets import MEANS, STD
-from torch.utils.data import DataLoader, ConcatDataset
-import torchvision.transforms as transforms
-from tqdm import tqdm
-import torchvision
-import PIL
-
-import torch.optim as optim
+# Training
+import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import torch
-import copy
 import time
 
 # For testing we want to get a whole image in patches

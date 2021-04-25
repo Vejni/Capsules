@@ -1,32 +1,31 @@
+# Base Models
 from .patchwisemodel import PatchWiseModel
 from .model import Model
 
+# Dynamic
 from .DynamicCaps.capsulelayers import DenseCapsule, PrimaryCapsule
 from .DynamicCaps.capsulenet import caps_loss
 
-import torch.nn.functional as F
+# Varcaps
 from .VarCaps import layers
 from .VarCaps import vb_routing 
 
+# SR Capsules
 from .SRCaps.modules import SelfRouting2d
 
-from .datasets import MEANS, STD
-from torch.utils.data import DataLoader, ConcatDataset
+# Data
 import torchvision.transforms as transforms
-from tqdm import tqdm
+from torch.utils.data import DataLoader
+from .datasets import MEANS, STD
 import torchvision
-import PIL
 
+# Training
 from torch.autograd import Variable
-import torch.optim as optim
+import torch.nn.functional as F
 import torch.nn as nn
 import numpy as np
 import torch
-import copy
-import time
 
-# For testing we want to get a whole image in patches
-BATCH_SIZE = 12
 
 class ImageWiseModels(Model):
     """
@@ -52,7 +51,7 @@ class ImageWiseModels(Model):
         return loss, outputs
 
 class BaseCNN(ImageWiseModels):
-    """ Simple CNN for baseline, inherits frmo ImageWiseModels """
+    """ Simpler CNN baseline than Nazeri """
     def __init__(self, args, patchwise=None, original_architecture=False):
         super(BaseCNN, self).__init__(args, patchwise, original_architecture)
 
@@ -96,7 +95,7 @@ class BaseCNN(ImageWiseModels):
             transforms.ToTensor(),
             transforms.Normalize(mean=MEANS, std=STD)
         ]))
-        train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True,  num_workers=args.workers)
+        train_data_loader = DataLoader(train_data, batch_size=args.batch_size, shuffle=True,  num_workers=args.workers)
         super(BaseCNN, self).train()  # Set model to training mode
         data, _ = next(iter(train_data_loader))
         #data = data[0]
@@ -117,7 +116,7 @@ class BaseCNN(ImageWiseModels):
         self.to(self.device)
 
 class NazeriCNN(ImageWiseModels):
-    """ Simple CNN for baseline, inherits from ImageWiseModels """
+    """ CNN imagewise network as in https://arxiv.org/abs/1803.04054 """
     def __init__(self, args, patchwise=None, original_architecture=False):
         super(NazeriCNN, self).__init__(args, patchwise, original_architecture)
 

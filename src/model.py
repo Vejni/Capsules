@@ -1,12 +1,15 @@
+# For the docs
 import matplotlib.pyplot as plt
 
-import torchvision.transforms as transforms
+# Data
 from torch.utils.data import DataLoader, ConcatDataset
+import torchvision.transforms as transforms
 from .datasets import MEANS, STD
 from tqdm import tqdm
 import torchvision
 import PIL
 
+# Training
 import torch.optim as optim
 import torch.nn as nn
 import numpy as np
@@ -15,10 +18,12 @@ import copy
 import time
 import os
 
+# For testing we want to get a whole image in patches
+BATCH_SIZE = 12
+
 class Model(nn.Module):
     """
-    A CNN classifier that is used by the image-wise networks to downscale the images
-    by feeding them though the convolutional layers of the trained patchwise net.
+    Basic module class, imagewise, patchwise and mixed models inherit from this one, overwriting the propagate method
     """
     def __init__(self, args):
         super(Model, self).__init__()
@@ -31,6 +36,7 @@ class Model(nn.Module):
             self.breakhis = False
 
     def init_device(self):
+        """ Sends model to CPU / GPU """
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
 
@@ -227,14 +233,14 @@ class Model(nn.Module):
                 if phase == 'val' and epoch_acc > best_acc:
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(self.state_dict())
-                    self.checkpoint = {
+                    checkpoint = {
                         'epoch': epoch + 1,
                         'state_dict': best_model_wts,
                         'optimizer': optimizer.state_dict(),
                         'loss': criterion
                     }
                     file_name = "checkpoint_"+ str(epoch + 1) + args.name + self.time + ".ckpt"
-                    self.save_checkpoint(args.checkpoint_path + file_name)
+                    torch.save(checkpoint, args.checkpoint_path + file_name)
 
         # Finished
         time_elapsed = time.time() - since
@@ -246,7 +252,7 @@ class Model(nn.Module):
         self.load_state_dict(best_model_wts)
     
     def propagate(self, inputs, labels, criterion=None):
-        """ Default Training step """
+        """ Default Training step - some models use this """
         outputs = self(inputs)
         if criterion:
             loss = criterion(outputs, labels)
@@ -292,7 +298,7 @@ class Model(nn.Module):
             transforms.ToTensor(),
             transforms.Normalize(mean=means, std=std)
         ]))
-        test_data_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True, num_workers=args.workers)
+        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=args.workers)
 
         super(Model, self).eval()
         with torch.no_grad():
@@ -340,7 +346,7 @@ class Model(nn.Module):
             print('Test Accuracy of the model on with max voting: {:.2f} %'.format(image_acc_max))
     
     def test_separate_classes(self, args):
-        """ Tests the model on each class separately and reports the accuracies """
+        """ Tests the model on each class separately and reports classification metrics """
         if not args.predefined_stats:
             means = [0.5, 0.5, 0.5]
             std = [0.5, 0.5, 0.5]
@@ -388,7 +394,7 @@ class Model(nn.Module):
                 TP[c] / (TP[c]+FN), TN / (TN + FP), 2*TP[c] / (2*TP[c] + FP + FN), ((TP[c] + TN) / (TP[c] + TN + FP + FN))))
 
     def test_training(self, args):
-        """ Test on patched training dataset """
+        """ Test on patched training dataset for debugging """
 
         if not args.predefined_stats:
             means = [0.5, 0.5, 0.5]
@@ -415,16 +421,15 @@ class Model(nn.Module):
                 
         print('Training Accuracy of the model: {:.2f} %'.format(correct / len(train_data_loader.dataset)))
 
-    def save_checkpoint(self, path):
-        torch.save(self.checkpoint, path)
-
     def save_model(self, path):
+        """ Save model after training has finished """
         file_name = path + self.name + self.time + ".ckpt"
         torch.save(self.state_dict(), file_name)
         print("Model saved:", file_name)
         return file_name
     
     def load(self, path):
+        """ Load pre-trained weights """
         try:
             if os.path.exists(path):
                 print('Loading model...')

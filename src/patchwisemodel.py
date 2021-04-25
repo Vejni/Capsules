@@ -1,20 +1,7 @@
-import matplotlib.pyplot as plt
-
-from torch.utils.data import DataLoader, ConcatDataset
-import torchvision.transforms as transforms
-from .datasets import MEANS, STD
-from tqdm import tqdm
-import torchvision
-import PIL
-
 import torch.nn.functional as F
-import torch.optim as optim
 from .model import Model
 import torch.nn as nn
-import torch
-import copy
-import time
-import os
+
 
 class PatchWiseModel(Model):
     """
