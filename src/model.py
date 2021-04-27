@@ -260,26 +260,28 @@ class Model(nn.Module):
             loss = 0
         return loss, outputs
 
-    def plot_metrics(self, path, pr=False):
+    def plot_metrics(self, path, pr=False, pl=True):
         """ Plots accuracy and loss side-by-side """
 
-        # Loss
-        plt.subplot(1, 2, 1)
-        plt.plot(self.train_losses, label='Training loss')
-        plt.plot(self.valid_losses, label='Validation loss')
-        plt.xlabel("Epochs")
-        plt.ylabel("Loss")
-        plt.legend(frameon=False)
-        plt.savefig(path + "loss.png")
+        # Plotting on HPC throws error
+        if pl:
+            # Loss
+            plt.subplot(1, 2, 1)
+            plt.plot(self.train_losses, label='Training loss')
+            plt.plot(self.valid_losses, label='Validation loss')
+            plt.xlabel("Epochs")
+            plt.ylabel("Loss")
+            plt.legend(frameon=False)
+            plt.savefig(path + "loss.png")
 
-        # Accuracy
-        plt.subplot(1, 2, 2)
-        plt.plot(self.train_acc, label='Training Accuracy')
-        plt.plot(self.val_acc, label='Validation Accuracy')
-        plt.xlabel("Epochs")
-        plt.ylabel("Acc")
-        plt.legend(frameon=False)
-        plt.savefig(path + "accuracy.png")
+            # Accuracy
+            plt.subplot(1, 2, 2)
+            plt.plot(self.train_acc, label='Training Accuracy')
+            plt.plot(self.val_acc, label='Validation Accuracy')
+            plt.xlabel("Epochs")
+            plt.ylabel("Acc")
+            plt.legend(frameon=False)
+            plt.savefig(path + "accuracy.png")
 
         if pr:
             print(self.train_losses, self.valid_losses, self.train_acc, self.val_acc, sep="\n")
@@ -334,7 +336,7 @@ class Model(nn.Module):
                         image_acc_max += 1
 
         patch_acc  /= len(test_data_loader.dataset)
-        print('Training Accuracy of the model: {:.2f} %'.format(patch_acc))
+        print('Test Accuracy of the model: {:.2f} %'.format(patch_acc))
 
         if not self.breakhis and voting:
             image_acc_maj /=  (len(test_data_loader.dataset)/12)
