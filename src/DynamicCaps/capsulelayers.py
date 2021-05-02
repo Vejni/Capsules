@@ -1,7 +1,4 @@
 """
-Some key layers used for constructing a Capsule Network. These layers can used to construct CapsNet on other dataset,
-not just on MNIST.
-
 Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com/XifengGuo/CapsNet-Pytorch`
 """
 

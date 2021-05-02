@@ -137,7 +137,7 @@ class VariationalMixedCapsules(Model):
 
 class EffNet(Model): 
     """
-    TODO
+    EfficientNet based on the implementation https://github.com/lukemelas/EfficientNet-PyTorch
     """
  
     def __init__(self, args):

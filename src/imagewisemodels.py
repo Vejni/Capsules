@@ -349,7 +349,6 @@ class SRCapsules(ImageWiseModels):
         self.loss.to(self.device)
 
     def forward(self, x):
-        #x = torch.rand((8, 3, 32, 32))
         out = F.relu(self.bn1(self.conv1(x)))
         a, pose = self.conv_a(out), self.conv_pose(out)
         a, pose = torch.sigmoid(self.bn_a(a)), self.bn_pose(pose)
