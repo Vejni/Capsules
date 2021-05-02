@@ -44,35 +44,22 @@ if __name__ == "__main__":
         predefined_stats=False
     )
     
-    #patch_wise_model = PatchWiseModel(args_patch_wise)
-    #patch_wise_model.train_model(args_patch_wise)
-    #patch_wise_model.test(args_patch_wise, voting=True)
-    #patch_wise_model.test_separate_classes(args_patch_wise)
-    #patch_wise_model.test_training(args_patch_wise)
-    #patch_wise_model.plot_metrics()
-    #patch_wise_model.save_checkpoint("./models/")
-    #path = patch_wise_model.save_model("./models/")
-    image_wise_model = EffNet(args_img_wise)
-    image_wise_model.train_model(args_img_wise)
-    #image_wise_model.test(args_img_wise, True)
-    #image_wise_model.test_separate_classes(args_img_wise)
-    
+    # Example
 
-    """
-    image_wise_model.save_model("./models/", "BaseCNN")
+    patch_wise_model = PatchWiseModel(args_patch_wise)
+    patch_wise_model.train_model(args_patch_wise)
+    patch_wise_model.test(args_patch_wise, voting=True)
+    patch_wise_model.test_separate_classes(args_patch_wise)
+    patch_wise_model.test_training(args_patch_wise)
+    patch_wise_model.plot_metrics()
+    patch_wise_model.save_checkpoint("./models/")
+    path = patch_wise_model.save_model("./models/")
 
-    image_wise_model = DynamicCapsules(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
+    image_wise_model = SRCapsules(args_img_wise)
     image_wise_model.train_model(args_img_wise)
-    image_wise_model.test(args_img_wise)
-    image_wise_model.save_model("./models/", "Dynamic")
-
-    image_wise_model = VariationalCapsules(input_size=[3, 512, 512], classes=3, channels=3, output_size=[3, 64, 64], patchwise_path=path, args=args_img_wise)
-    image_wise_model.train_model(args_img_wise)
-    image_wise_model.test(args_img_wise)
-    image_wise_model.save_model("./models/", "Variational")
-
-    image_wise_model = EffNet(args_img_wise)
-    image_wise_model.train_model(args_img_wise)
-    image_wise_model.test(args_img_wise)
-    image_wise_model.save_model("./models/", "VariationalMixed")
-    """
+    image_wise_model.test(args_img_wise, True)
+    image_wise_model.test_separate_classes(args_img_wise)
+    image_wise_model.test_training(args_img_wise)
+    image_wise_model.plot_metrics()
+    image_wise_model.save_checkpoint("./models/")
+    image_wise_model.save_model("./models/")
