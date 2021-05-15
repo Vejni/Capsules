@@ -37,13 +37,20 @@ class Model(nn.Module):
 
     def init_device(self):
         """ Sends model to CPU / GPU """
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to(self.device)
 
         print(self)
         print("Parameters:", sum(p.numel() for p in super(Model, self).parameters()))
         print("Trainable parameters:", sum(p.numel() for p in super(Model, self).parameters() if p.requires_grad))
         print("Using:", self.device)
+
+        # Additional Info when using cuda
+        if self.device.type == 'cuda':
+            print(torch.cuda.get_device_name(0))
+            print('Memory Usage:')
+            print('Allocated:', round(torch.cuda.memory_allocated(0)/1024**3,1), 'GB')
+            print('Cached:   ', round(torch.cuda.memory_reserved(0)/1024**3,1), 'GB')
 
     def train_model(self, args, path=None):
         """ Main Training loop with data augmentation, early stopping and scheduler """
@@ -421,7 +428,7 @@ class Model(nn.Module):
                 _, predicted = torch.max(predicted, 1)
                 correct += (predicted == labels).sum().item()
                 
-        print('Training Accuracy of the model: {:.2f} %'.format(correct / len(train_data_loader.dataset)))
+        print('Training Accuracy of the model: {:.2f}'.format(correct / len(train_data_loader.dataset)))
 
     def save_model(self, path):
         """ Save model after training has finished """

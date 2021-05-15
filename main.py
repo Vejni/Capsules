@@ -53,9 +53,9 @@ if __name__ == "__main__":
     patch_wise_model.test_training(args_patch_wise)
     patch_wise_model.plot_metrics()
     patch_wise_model.save_checkpoint("./models/")
-    path = patch_wise_model.save_model("./models/")
+    patch_wise_model.save_model("./models/")
 
-    image_wise_model = SRCapsules(args_img_wise)
+    image_wise_model = EffNet(args_img_wise)
     image_wise_model.train_model(args_img_wise)
     image_wise_model.test(args_img_wise, True)
     image_wise_model.test_separate_classes(args_img_wise)

@@ -1,26 +1,27 @@
-#!/bin/bash
+#!/bin/bash --login
 
 #SBATCH --partition=uoa-gpu
-#SBATCH --time=24:00:00
-#SBATCH --mem-per-cpu=2GB
+#SBATCH --cpus-per-task=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --mem=64GB
+#SBATCH --gres=gpu:2
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=m.veiner.17@abdn.ac.uk
 #SBATCH --nodes=1
-#SBATCH --cpus-per-task=24
 #SBATCH --ntasks=1
-#SBATCH --gres=gpu:1
-#SBATCH --nodelist=cgpu01
+
 
 date 
 hostname
 
-module load python-3.7.7
-module load anaconda3
+module load cudatoolkit-10.1.168
 module list
 
+source activate pytorch
 source /uoa/home/u02mv17/Repository/.venv/bin/activate
 
-srun python /uoa/home/u02mv17/Repository/main.py
+nvidia-smi 
+python /uoa/home/u02mv17/Repository/main.py
 
 date
 exit 0

@@ -165,7 +165,7 @@ class EffNet(Model):
         # This will send net to device, so only call here
         self.init_device()
 
-    def propagate(self, inputs, labels, criterion):
+    def propagate(self, inputs, labels, criterion=None):
         outputs = self.model(inputs)
         if criterion:
             loss = criterion(outputs, labels)
