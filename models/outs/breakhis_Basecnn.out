@@ -43,7 +43,7 @@ PatchWiseModel(
 )
 Parameters: 119141
 Trainable parameters: 119141
-Using: cpu
+Using: cuda
 Start training network: 2021/04/27 12:42
 
 Using  44288 training samples
@@ -137,7 +137,7 @@ BaseCNN(
 )
 Parameters: 2329095
 Trainable parameters: 2329095
-Using: cpu
+Using: cuda
 Start training network: 2021/04/27 14:08
 
 Using  44288 training samples
