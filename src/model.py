@@ -307,7 +307,7 @@ class Model(nn.Module):
             transforms.ToTensor(),
             transforms.Normalize(mean=means, std=std)
         ]))
-        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=True, num_workers=args.workers)
+        test_data_loader = DataLoader(test_data, batch_size=BATCH_SIZE, shuffle=False, num_workers=args.workers)
 
         super(Model, self).eval()
         with torch.no_grad():
@@ -315,6 +315,7 @@ class Model(nn.Module):
             image_acc_maj = 0
             image_acc_sum = 0
             image_acc_max = 0
+            conf = []
             for images, labels in tqdm(test_data_loader):
                 images = images.to(self.device)
                 labels = labels.to(self.device)
@@ -325,13 +326,14 @@ class Model(nn.Module):
                 if not self.breakhis and voting:
                     # Voting
                     preds = preds.cpu()
+                    predicted = predicted.cpu()
 
                     maj_prob = (args.classes - 1) - np.argmax(np.sum(np.eye(args.classes)[np.array(predicted).reshape(-1)], axis=0)[::-1])
                     sum_prob = (args.classes - 1) - np.argmax(np.sum(np.exp(preds.numpy()), axis=0)[::-1])
                     max_prob = (args.classes - 1) - np.argmax(np.max(np.exp(preds.numpy()), axis=0)[::-1])
         
                     confidence = np.sum(np.array(predicted) == maj_prob) / predicted.size(0)
-                    confidence = np.round(confidence * 100, 2)
+                    conf.append(np.round(confidence * 100, 2))
 
                     if labels.data[0].item()== maj_prob:
                         image_acc_maj += 1
@@ -343,16 +345,17 @@ class Model(nn.Module):
                         image_acc_max += 1
 
         patch_acc  /= len(test_data_loader.dataset)
-        print('Test Accuracy of the model: {:.2f} %'.format(patch_acc))
+        print('Test Accuracy of the model: {:.2f}'.format(patch_acc))
+        print('Average Confidence: {:.2f}'.format(sum(conf)/len(conf)))
 
         if not self.breakhis and voting:
             image_acc_maj /=  (len(test_data_loader.dataset)/12)
             image_acc_sum /=  (len(test_data_loader.dataset)/12)
             image_acc_max /=  (len(test_data_loader.dataset)/12)
 
-            print('Test Accuracy of the model on with majority voting: {:.2f} %'.format(image_acc_maj))
-            print('Test Accuracy of the model on with sum voting: {:.2f} %'.format(image_acc_sum))
-            print('Test Accuracy of the model on with max voting: {:.2f} %'.format(image_acc_max))
+            print('Test Accuracy of the model on with majority voting: {:.2f}'.format(image_acc_maj))
+            print('Test Accuracy of the model on with sum voting: {:.2f}'.format(image_acc_sum))
+            print('Test Accuracy of the model on with max voting: {:.2f}'.format(image_acc_max))
     
     def test_separate_classes(self, args):
         """ Tests the model on each class separately and reports classification metrics """

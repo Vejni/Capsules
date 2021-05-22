@@ -1,0 +1,167 @@
+VariationalCapsules(
+  (patch_wise_model): PatchWiseModel(
+    (features): Sequential(
+      (0): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (2): ReLU(inplace=True)
+      (3): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (4): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (5): ReLU(inplace=True)
+      (6): Conv2d(16, 16, kernel_size=(2, 2), stride=(2, 2))
+      (7): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (8): ReLU(inplace=True)
+      (9): Conv2d(16, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (10): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (11): ReLU(inplace=True)
+      (12): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (13): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (14): ReLU(inplace=True)
+      (15): Conv2d(32, 32, kernel_size=(2, 2), stride=(2, 2))
+      (16): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (17): ReLU(inplace=True)
+      (18): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (19): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (20): ReLU(inplace=True)
+      (21): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (22): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (23): ReLU(inplace=True)
+      (24): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+      (25): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (26): ReLU(inplace=True)
+      (27): Conv2d(64, 3, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (classifier): Sequential(
+      (0): Linear(in_features=12288, out_features=2, bias=True)
+    )
+  )
+  (Conv_1): Conv2d(3, 64, kernel_size=(5, 5), stride=(2, 2), bias=False)
+  (BN_1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (PrimaryCaps): PrimaryCapsules2d(
+    (BN_a): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (BN_p): BatchNorm3d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  )
+  (ConvCaps_1): ConvCapsules2d()
+  (ConvRouting_1): VariationalBayesRouting2d(
+    (BN_v): BatchNorm3d(16, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+    (BN_a): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+  )
+  (ConvCaps_2): ConvCapsules2d()
+  (ConvRouting_2): VariationalBayesRouting2d(
+    (BN_v): BatchNorm3d(8, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+    (BN_a): BatchNorm2d(8, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+  )
+  (ClassCaps): ConvCapsules2d()
+  (ClassRouting): VariationalBayesRouting2d(
+    (BN_v): BatchNorm3d(2, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+    (BN_a): BatchNorm2d(2, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+  )
+)
+Parameters: 197145
+Trainable parameters: 197145
+Using: cuda
+Tesla P100-PCIE-16GB
+Memory Usage:
+Allocated: 0.0 GB
+Cached:    2.4 GB
+Start training network: 2021/05/18 13:20
+
+  0%|          | 0/2768 [00:00<?, ?it/s]
+Using  44288 training samples
+Using  1186 validation samples
+Epoch 1/10
+----------
+100%|██████████| 2768/2768 [37:11<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5520 Acc: 0.8894
+100%|██████████| 75/75 [00:23<00:00,  3.21it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5431 Acc: 0.9039
+Epoch 2/10
+----------
+100%|██████████| 2768/2768 [37:09<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5467 Acc: 0.9018
+100%|██████████| 75/75 [00:23<00:00,  3.21it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5341 Acc: 0.9191
+Epoch 3/10
+----------
+100%|██████████| 2768/2768 [37:13<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5440 Acc: 0.9090
+100%|██████████| 75/75 [00:23<00:00,  3.21it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5384 Acc: 0.9233
+Epoch 4/10
+----------
+100%|██████████| 2768/2768 [37:09<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5427 Acc: 0.9137
+100%|██████████| 75/75 [00:23<00:00,  3.19it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5393 Acc: 0.9157
+Epoch 5/10
+----------
+100%|██████████| 2768/2768 [37:07<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5431 Acc: 0.9142
+100%|██████████| 75/75 [00:23<00:00,  3.20it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5371 Acc: 0.9342
+Epoch 6/10
+----------
+100%|██████████| 2768/2768 [37:13<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5420 Acc: 0.9167
+100%|██████████| 75/75 [00:23<00:00,  3.21it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5336 Acc: 0.9300
+Epoch 7/10
+----------
+100%|██████████| 2768/2768 [37:14<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5405 Acc: 0.9210
+100%|██████████| 75/75 [00:23<00:00,  3.20it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5368 Acc: 0.9342
+Epoch 8/10
+----------
+100%|██████████| 2768/2768 [37:11<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5398 Acc: 0.9243
+100%|██████████| 75/75 [00:23<00:00,  3.19it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5349 Acc: 0.9250
+Epoch 9/10
+----------
+100%|██████████| 2768/2768 [37:13<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5387 Acc: 0.9261
+100%|██████████| 75/75 [00:23<00:00,  3.19it/s]
+  0%|          | 0/2768 [00:00<?, ?it/s]
+val Loss: 0.5306 Acc: 0.9376
+Epoch 10/10
+----------
+100%|██████████| 2768/2768 [37:12<00:00,  1.24it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+train Loss: 0.5386 Acc: 0.9286
+100%|██████████| 75/75 [00:23<00:00,  3.19it/s]
+val Loss: 0.5280 Acc: 0.9469
+Training complete in 375m 50s
+Best Validation Accuracy: 0.946880
+100%|██████████| 99/99 [00:23<00:00,  4.28it/s]
+  0%|          | 0/75 [00:00<?, ?it/s]
+Test Accuracy of the model: 0.95 %
+100%|██████████| 75/75 [00:23<00:00,  3.22it/s]
+Confusion matrix
+ tensor([[350.,  16.],
+        [ 45., 776.]])
+Class 0
+TP 350.0, TN 776.0, FP 45.0, FN 16.0
+Sensitivity 0.96, Specificity 0.95, F1 0.92, Accuracy 0.95
+Class 1
+TP 776.0, TN 350.0, FP 16.0, FN 45.0
+Sensitivity 0.95, Specificity 0.96, F1 0.96, Accuracy 0.95
+Model saved: ./_BreakHis_VarCaps__BreakHis_VarCaps_2021-05-18_13-20.ckpt
+
+'./_BreakHis_VarCaps__BreakHis_VarCaps_2021-05-18_13-20.ckpt'

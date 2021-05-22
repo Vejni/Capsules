@@ -237,7 +237,7 @@ class DynamicCapsules(ImageWiseModels):
         return length, reconstruction.view(-1, *self.output_size)
 
     def propagate(self, inputs, labels, criterion=None):
-        labels = torch.zeros(labels.size(0), self.classes).scatter_(1, labels.view(-1, 1), 1.)  # change to one-hot coding
+        labels = torch.zeros(labels.size(0), self.classes).to(self.device).scatter_(1, labels.view(-1, 1), 1.)  # change to one-hot coding
         inputs = self.patch_wise_model.features(inputs)
         if criterion:
             y_pred, x_recon = self(inputs, labels)

@@ -1,6 +1,0 @@
-THIS DATASET IS PUBLICALLY AVAILABLE UNDER A CREATIVE COMMONS CC BY-NC-ND LICENSE (ATTRIBUTION-NONCOMMERCIAL-NODERIVS)
-ESSENCIALLY, YOU ARE GRANTED ACCESS TO THE DATASET FOR USE IN YOUR RESEARCH AS LONG AS YOU CREDIT OUR WORK/PUBLICATIONS(*), BUT YOU CANNOT CHANGE THEM IN ANY WAY OR USE THEM COMMERCIALLY
-
-(*) Aresta, Guilherme, et al. "BACH: Grand challenge on breast cancer histology images." Medical image analysis (2019).
-(*) Araújo, Teresa, et al. "Classification of breast cancer histology images using convolutional neural networks." PloS one 12.6 (2017): e0177544.
-(*) Fondón, Irene, et al. "Automatic classification of tissue malignancy for breast carcinoma diagnosis." Computers in biology and medicine 96 (2018): 41-51.

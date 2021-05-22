@@ -1,0 +1,187 @@
+NazeriCNN(
+  (patch_wise_model): PatchWiseModel(
+    (features): Sequential(
+      (0): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (2): ReLU(inplace=True)
+      (3): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (4): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (5): ReLU(inplace=True)
+      (6): Conv2d(16, 16, kernel_size=(2, 2), stride=(2, 2))
+      (7): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (8): ReLU(inplace=True)
+      (9): Conv2d(16, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (10): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (11): ReLU(inplace=True)
+      (12): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (13): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (14): ReLU(inplace=True)
+      (15): Conv2d(32, 32, kernel_size=(2, 2), stride=(2, 2))
+      (16): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (17): ReLU(inplace=True)
+      (18): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (19): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (20): ReLU(inplace=True)
+      (21): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (22): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (23): ReLU(inplace=True)
+      (24): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+      (25): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (26): ReLU(inplace=True)
+      (27): Conv2d(64, 3, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (classifier): Sequential(
+      (0): Linear(in_features=12288, out_features=4, bias=True)
+    )
+  )
+  (features): Sequential(
+    (0): Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (4): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+    (6): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+    (7): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (8): ReLU(inplace=True)
+    (9): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (10): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): ReLU(inplace=True)
+    (12): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (13): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (14): ReLU(inplace=True)
+    (15): Conv2d(128, 128, kernel_size=(2, 2), stride=(2, 2))
+    (16): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (17): ReLU(inplace=True)
+    (18): Conv2d(128, 1, kernel_size=(1, 1), stride=(1, 1))
+  )
+  (classifier): Sequential(
+    (0): Linear(in_features=256, out_features=128, bias=True)
+    (1): ReLU(inplace=True)
+    (2): Dropout(p=0.5, inplace=False)
+    (3): Linear(in_features=128, out_features=128, bias=True)
+    (4): ReLU(inplace=True)
+    (5): Dropout(p=0.5, inplace=False)
+    (6): Linear(in_features=128, out_features=64, bias=True)
+    (7): ReLU(inplace=True)
+    (8): Dropout(p=0.5, inplace=False)
+    (9): Linear(in_features=64, out_features=4, bias=True)
+  )
+)
+Parameters: 545196
+Trainable parameters: 545196
+Using: cuda
+Tesla P100-PCIE-16GB
+Memory Usage:
+Allocated: 0.0 GB
+Cached:    11.7 GB
+Start training network: 2021/05/16 14:58
+
+  0%|          | 0/1680 [00:00<?, ?it/s]
+Using  26880 training samples
+Using  720 validation samples
+Epoch 1/10
+----------
+100%|██████████| 1680/1680 [14:12<00:00,  1.97it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 1.1218 Acc: 0.4576
+100%|██████████| 45/45 [00:07<00:00,  5.76it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 1.2064 Acc: 0.5264
+Epoch 2/10
+----------
+100%|██████████| 1680/1680 [14:07<00:00,  1.98it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.8967 Acc: 0.6346
+100%|██████████| 45/45 [00:07<00:00,  6.20it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 1.1022 Acc: 0.6000
+Epoch 3/10
+----------
+100%|██████████| 1680/1680 [14:11<00:00,  1.97it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.8229 Acc: 0.6763
+100%|██████████| 45/45 [00:07<00:00,  6.40it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 0.9870 Acc: 0.6222
+Epoch 4/10
+----------
+100%|██████████| 1680/1680 [14:17<00:00,  1.96it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.7865 Acc: 0.6975
+100%|██████████| 45/45 [00:06<00:00,  7.17it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 0.9044 Acc: 0.6708
+Epoch 5/10
+----------
+100%|██████████| 1680/1680 [14:18<00:00,  1.96it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.7405 Acc: 0.7197
+100%|██████████| 45/45 [00:07<00:00,  6.15it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 1.0185 Acc: 0.6319
+Epoch 6/10
+----------
+100%|██████████| 1680/1680 [14:16<00:00,  1.96it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.7226 Acc: 0.7277
+100%|██████████| 45/45 [00:06<00:00,  6.88it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 0.9800 Acc: 0.6625
+Epoch 7/10
+----------
+100%|██████████| 1680/1680 [14:10<00:00,  1.98it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.6992 Acc: 0.7374
+100%|██████████| 45/45 [00:06<00:00,  7.00it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 0.9412 Acc: 0.6792
+Epoch 8/10
+----------
+100%|██████████| 1680/1680 [14:13<00:00,  1.97it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.6742 Acc: 0.7480
+100%|██████████| 45/45 [00:06<00:00,  7.12it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 1.0741 Acc: 0.6653
+Epoch 9/10
+----------
+100%|██████████| 1680/1680 [14:14<00:00,  1.97it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.6528 Acc: 0.7558
+100%|██████████| 45/45 [00:07<00:00,  6.41it/s]
+  0%|          | 0/1680 [00:00<?, ?it/s]
+val Loss: 0.8883 Acc: 0.7097
+Epoch 10/10
+----------
+100%|██████████| 1680/1680 [14:16<00:00,  1.96it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+train Loss: 0.6306 Acc: 0.7653
+100%|██████████| 45/45 [00:07<00:00,  6.16it/s]
+val Loss: 1.0492 Acc: 0.6681
+Training complete in 143m 27s
+Best Validation Accuracy: 0.709722
+100%|██████████| 60/60 [00:08<00:00,  7.46it/s]
+  0%|          | 0/45 [00:00<?, ?it/s]
+Test Accuracy of the model: 0.67 %
+100%|██████████| 45/45 [00:06<00:00,  6.88it/s]
+Confusion matrix
+ tensor([[112.,   6.,  11.,  51.],
+        [ 11.,  89.,  23.,  21.],
+        [ 29.,  20., 137.,  18.],
+        [  8.,  37.,   4., 143.]])
+Class 0
+TP 112.0, TN 492.0, FP 48.0, FN 68.0
+Sensitivity 0.62, Specificity 0.91, F1 0.66, Accuracy 0.84
+Class 1
+TP 89.0, TN 513.0, FP 63.0, FN 55.0
+Sensitivity 0.62, Specificity 0.89, F1 0.60, Accuracy 0.84
+Class 2
+TP 137.0, TN 478.0, FP 38.0, FN 67.0
+Sensitivity 0.67, Specificity 0.93, F1 0.72, Accuracy 0.85
+Class 3
+TP 143.0, TN 438.0, FP 90.0, FN 49.0
+Sensitivity 0.74, Specificity 0.83, F1 0.67, Accuracy 0.81
+Model saved: ./_BACH_BaseCNN__BACH_BaseCNN_2021-05-16_14-58.ckpt
+
+'./_BACH_BaseCNN__BACH_BaseCNN_2021-05-16_14-58.ckpt'

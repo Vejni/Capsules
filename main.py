@@ -45,7 +45,7 @@ if __name__ == "__main__":
     )
     
     # Example
-
+    """
     patch_wise_model = PatchWiseModel(args_patch_wise)
     patch_wise_model.train_model(args_patch_wise)
     patch_wise_model.test(args_patch_wise, voting=True)
@@ -54,9 +54,9 @@ if __name__ == "__main__":
     patch_wise_model.plot_metrics()
     patch_wise_model.save_checkpoint("./models/")
     patch_wise_model.save_model("./models/")
-
-    image_wise_model = EffNet(args_img_wise)
-    image_wise_model.train_model(args_img_wise)
+    """
+    image_wise_model = DynamicCapsules(args_img_wise)
+    #image_wise_model.train_model(args_img_wise)
     image_wise_model.test(args_img_wise, True)
     image_wise_model.test_separate_classes(args_img_wise)
     image_wise_model.test_training(args_img_wise)
