@@ -11,7 +11,7 @@ if __name__ == "__main__":
     figure.set_size_inches(12, 9)
 
     for f in files:
-        with open("C:/Marci/Suli/Dissertation/Repository/models/outs/bach_" + f + ".out", 'r', encoding = 'cp850') as fin:
+        with open("C:/Marci/Suli/Dissertation/Repository/models/outs/breakhis_" + f + ".out", 'r', encoding = 'cp850') as fin:
             lines = fin.readlines()
         
         train_loss = []
