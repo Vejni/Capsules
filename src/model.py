@@ -346,10 +346,9 @@ class Model(nn.Module):
 
         patch_acc  /= len(test_data_loader.dataset)
         print('Test Accuracy of the model: {:.2f}'.format(patch_acc))
-        if not self.breakhis and voting:
-            print('Average Confidence: {:.2f}'.format(sum(conf)/len(conf)))
 
         if not self.breakhis and voting:
+            print('Average Confidence: {:.2f}'.format(sum(conf)/len(conf)))
             image_acc_maj /=  (len(test_data_loader.dataset)/12)
             image_acc_sum /=  (len(test_data_loader.dataset)/12)
             image_acc_max /=  (len(test_data_loader.dataset)/12)
