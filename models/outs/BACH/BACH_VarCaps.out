@@ -1,0 +1,134 @@
+VariationalCapsules(
+  (patch_wise_model): PatchWiseModel(
+    (features): Sequential(
+      (0): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (2): ReLU(inplace=True)
+      (3): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (4): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (5): ReLU(inplace=True)
+      (6): Conv2d(16, 16, kernel_size=(2, 2), stride=(2, 2))
+      (7): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (8): ReLU(inplace=True)
+      (9): Conv2d(16, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (10): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (11): ReLU(inplace=True)
+      (12): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (13): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (14): ReLU(inplace=True)
+      (15): Conv2d(32, 32, kernel_size=(2, 2), stride=(2, 2))
+      (16): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (17): ReLU(inplace=True)
+      (18): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (19): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (20): ReLU(inplace=True)
+      (21): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (22): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (23): ReLU(inplace=True)
+      (24): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+      (25): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (26): ReLU(inplace=True)
+      (27): Conv2d(64, 3, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (classifier): Sequential(
+      (0): Linear(in_features=12288, out_features=4, bias=True)
+    )
+  )
+  (Conv_1): Conv2d(3, 64, kernel_size=(5, 5), stride=(2, 2), bias=False)
+  (BN_1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  (PrimaryCaps): PrimaryCapsules2d(
+    (BN_a): BatchNorm2d(8, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (BN_p): BatchNorm3d(8, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+  )
+  (ConvCaps_1): ConvCapsules2d()
+  (ConvRouting_1): VariationalBayesRouting2d(
+    (BN_v): BatchNorm3d(8, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+    (BN_a): BatchNorm2d(8, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+  )
+  (ConvCaps_2): ConvCapsules2d()
+  (ConvRouting_2): VariationalBayesRouting2d(
+    (BN_v): BatchNorm3d(8, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+    (BN_a): BatchNorm2d(8, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+  )
+  (ClassCaps): ConvCapsules2d()
+  (ClassRouting): VariationalBayesRouting2d(
+    (BN_v): BatchNorm3d(4, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+    (BN_a): BatchNorm2d(4, eps=1e-05, momentum=0.1, affine=False, track_running_stats=True)
+  )
+)
+Parameters: 176367
+Trainable parameters: 176367
+Using: cuda
+Tesla P100-PCIE-16GB
+Memory Usage:
+Allocated: 0.0 GB
+Cached:    11.7 GB
+Start training network: 2021/05/22 14:06
+
+Using  9800 training samples
+Using  2100 validation samples
+Epoch 1/10
+----------
+train Loss: 1.2299 Acc: 0.5753
+val Loss: 1.2132 Acc: 0.6361
+Epoch 2/10
+----------
+train Loss: 1.2131 Acc: 0.6126
+val Loss: 1.2298 Acc: 0.5958
+Epoch 3/10
+----------
+train Loss: 1.2047 Acc: 0.6295
+val Loss: 1.2120 Acc: 0.6264
+Epoch 4/10
+----------
+train Loss: 1.2019 Acc: 0.6361
+val Loss: 1.1988 Acc: 0.6583
+Epoch 5/10
+----------
+train Loss: 1.1943 Acc: 0.6517
+val Loss: 1.2155 Acc: 0.6181
+Epoch 6/10
+----------
+train Loss: 1.1911 Acc: 0.6565
+val Loss: 1.2013 Acc: 0.6403
+Epoch 7/10
+----------
+train Loss: 1.1857 Acc: 0.6717
+val Loss: 1.2104 Acc: 0.6278
+Epoch 8/10
+----------
+train Loss: 1.1822 Acc: 0.6801
+val Loss: 1.2076 Acc: 0.6444
+Epoch 9/10
+----------
+train Loss: 1.1849 Acc: 0.6755
+val Loss: 1.1955 Acc: 0.6722
+Epoch 10/10
+----------
+train Loss: 1.1781 Acc: 0.6926
+val Loss: 1.2058 Acc: 0.6542
+Training complete in 85m 34s
+Best Validation Accuracy: 0.672222
+Test Accuracy of the model: 0.64
+Test Accuracy of the model on with majority voting: 0.79
+Test Accuracy of the model on with sum voting: 0.74
+Test Accuracy of the model on with max voting: 0.70
+Confusion matrix
+ tensor([[118.,  17.,  14.,  31.],
+        [ 14.,  86.,  19.,  25.],
+        [ 35.,  12., 122.,  35.],
+        [ 20.,  24.,  12., 136.]])
+Class 0
+TP 118.0, TN 471.0, FP 69.0, FN 62.0
+Sensitivity 0.66, Specificity 0.87, F1 0.64, Accuracy 0.82
+Class 1
+TP 86.0, TN 523.0, FP 53.0, FN 58.0
+Sensitivity 0.60, Specificity 0.91, F1 0.61, Accuracy 0.85
+Class 2
+TP 122.0, TN 471.0, FP 45.0, FN 82.0
+Sensitivity 0.60, Specificity 0.91, F1 0.66, Accuracy 0.82
+Class 3
+TP 136.0, TN 437.0, FP 91.0, FN 56.0
+Sensitivity 0.71, Specificity 0.83, F1 0.65, Accuracy 0.80
+Model saved: ./_BACH_VarCaps__BACH_VarCaps_2021-05-22_14-06.ckpt
+'./_BACH_VarCaps__BACH_VarCaps_2021-05-22_14-06.ckpt'

@@ -193,7 +193,7 @@ train Loss: 0.1431 Acc: 0.9436
 val Loss: 0.1445 Acc: 0.9494
 Training complete in 971m 59s
 Best Validation Accuracy: 0.953626
-Training Accuracy of the model: 0.95 %
+Test Accuracy of the model: 0.95 %
 
 Confusion matrix
  tensor([[345.,  21.],

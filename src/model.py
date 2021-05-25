@@ -445,13 +445,13 @@ class Model(nn.Module):
         try:
             if os.path.exists(path):
                 print('Loading model...')
-                self.load_state_dict(torch.load(path))
+                self.load_state_dict(torch.load(path, map_location=self.device))
         except:
             print('Failed to load pre-trained network with path:', path)
     
     def load_ckp(self, checkpoint_fpath, optimizer):
         """ To continue training we need more than just saving the weights """
-        checkpoint = torch.load(checkpoint_fpath)
+        checkpoint = torch.load(checkpoint_fpath, map_location=self.device)
         self.load_state_dict(checkpoint['state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         return optimizer, checkpoint['epoch']

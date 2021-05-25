@@ -150,7 +150,7 @@ class EffNet(Model):
 
         self.model = EfficientNet.from_pretrained('efficientnet-b0')
         num_ftrs = self.model._fc.in_features
-        self.model.fc = nn.Sequential(
+        self.model._fc = nn.Sequential(
             nn.Linear(num_ftrs, 128),
             nn.ReLU(), 
             nn.Linear(128, self.n_classes)

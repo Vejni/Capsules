@@ -1,0 +1,147 @@
+PatchWiseModel(
+  (features): Sequential(
+    (0): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (4): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+    (6): Conv2d(16, 16, kernel_size=(2, 2), stride=(2, 2))
+    (7): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (8): ReLU(inplace=True)
+    (9): Conv2d(16, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (10): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): ReLU(inplace=True)
+    (12): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (13): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (14): ReLU(inplace=True)
+    (15): Conv2d(32, 32, kernel_size=(2, 2), stride=(2, 2))
+    (16): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (17): ReLU(inplace=True)
+    (18): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (19): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (20): ReLU(inplace=True)
+    (21): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (22): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (23): ReLU(inplace=True)
+    (24): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+    (25): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (26): ReLU(inplace=True)
+    (27): Conv2d(64, 3, kernel_size=(1, 1), stride=(1, 1))
+  )
+  (classifier): Sequential(
+    (0): Linear(in_features=12288, out_features=4, bias=True)
+  )
+)
+Parameters: 143719
+Trainable parameters: 143719
+Using: cuda:0
+Start training network: 2021/05/13 12:22
+
+/usr/local/lib/python3.7/dist-packages/torchvision/transforms/transforms.py:1201: UserWarning: Argument resample is deprecated and will be removed since v0.10.0. Please, use interpolation instead
+  "Argument resample is deprecated and will be removed since v0.10.0. Please, use interpolation instead"
+  0%|          | 0/613 [00:00<?, ?it/s]Using  39208 training samples
+Using  2100 validation samples
+Epoch 1/10
+----------
+100%|██████████| 613/613 [23:50<00:00,  2.33s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 1.2081 Acc: 0.4694
+100%|██████████| 33/33 [00:23<00:00,  1.39it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.4144 Acc: 0.4557
+Epoch 2/10
+----------
+100%|██████████| 613/613 [23:59<00:00,  2.35s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.9208 Acc: 0.6113
+100%|██████████| 33/33 [00:23<00:00,  1.42it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.3395 Acc: 0.4886
+Epoch 3/10
+----------
+100%|██████████| 613/613 [24:14<00:00,  2.37s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.7849 Acc: 0.6786
+100%|██████████| 33/33 [00:23<00:00,  1.42it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.2483 Acc: 0.5100
+Epoch 4/10
+----------
+100%|██████████| 613/613 [24:16<00:00,  2.38s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.6779 Acc: 0.7296
+100%|██████████| 33/33 [00:23<00:00,  1.38it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.3888 Acc: 0.5348
+Epoch 5/10
+----------
+100%|██████████| 613/613 [24:36<00:00,  2.41s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.5944 Acc: 0.7677
+100%|██████████| 33/33 [00:23<00:00,  1.39it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.2882 Acc: 0.5371
+Epoch 6/10
+----------
+100%|██████████| 613/613 [24:03<00:00,  2.35s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.5267 Acc: 0.7970
+100%|██████████| 33/33 [00:22<00:00,  1.44it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.2403 Acc: 0.5367
+Epoch 7/10
+----------
+100%|██████████| 613/613 [23:55<00:00,  2.34s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.4718 Acc: 0.8213
+100%|██████████| 33/33 [00:22<00:00,  1.46it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.2617 Acc: 0.5643
+Epoch 8/10
+----------
+100%|██████████| 613/613 [49:31<00:00,  4.85s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.4116 Acc: 0.8447
+100%|██████████| 33/33 [06:44<00:00, 12.27s/it]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.3985 Acc: 0.5352
+Epoch 9/10
+----------
+100%|██████████| 613/613 [23:22<00:00,  2.29s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.3696 Acc: 0.8643
+100%|██████████| 33/33 [00:21<00:00,  1.50it/s]
+  0%|          | 0/613 [00:00<?, ?it/s]
+val Loss: 1.4262 Acc: 0.5571
+Epoch 10/10
+----------
+100%|██████████| 613/613 [23:25<00:00,  2.29s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]
+train Loss: 0.3272 Acc: 0.8837
+100%|██████████| 33/33 [00:22<00:00,  1.50it/s]
+val Loss: 1.4843 Acc: 0.5562
+Training complete in 103m 48s
+Best Validation Accuracy: 0.557143
+100%|██████████| 176/176 [06:43<00:00,  2.29s/it]
+  0%|          | 0/33 [00:00<?, ?it/s]Test Accuracy of the model: 0.55 %
+100%|██████████| 33/33 [00:22<00:00,  1.44it/s]Confusion matrix
+ tensor([[342., 132.,  14.,  37.],
+        [ 37., 289.,  52.,  42.],
+        [ 95., 237., 221.,  42.],
+        [ 40., 226.,   6., 298.]])
+Class 0
+TP 342.0, TN 1413.0, FP 172.0, FN 183.0
+Sensitivity 0.65, Specificity 0.89, F1 0.66, Accuracy 0.83
+Class 1
+TP 289.0, TN 1095.0, FP 595.0, FN 131.0
+Sensitivity 0.69, Specificity 0.65, F1 0.44, Accuracy 0.66
+Class 2
+TP 221.0, TN 1443.0, FP 72.0, FN 374.0
+Sensitivity 0.37, Specificity 0.95, F1 0.50, Accuracy 0.79
+Class 3
+TP 298.0, TN 1419.0, FP 121.0, FN 272.0
+Sensitivity 0.52, Specificity 0.92, F1 0.60, Accuracy 0.81
+Model saved: /content/gdrive/MyDrive/Models/_BACH_patchwise__BACH_patchwise_2021-05-14_07-32.ckpt
+
+/content/gdrive/MyDrive/Models/_BACH_patchwise__BACH_patchwise_2021-05-14_07-32.ckpt
