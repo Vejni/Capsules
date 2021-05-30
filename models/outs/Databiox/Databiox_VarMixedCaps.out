@@ -150,6 +150,10 @@ Best Validation Accuracy: 0.494565
   0%|          | 0/209 [00:00<?, ?it/s]
 Test Accuracy of the model: 0.52
 100%|██████████| 209/209 [00:24<00:00,  8.39it/s]
+Average Confidence: 80.70
+Test Accuracy of the model on with majority voting: 0.57
+Test Accuracy of the model on with sum voting: 0.55
+Test Accuracy of the model on with max voting: 0.54
 Confusion matrix
  tensor([[227.,  92.,  65.],
         [113., 363., 268.],

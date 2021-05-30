@@ -65,8 +65,8 @@ Allocated: 0.0 GB
 Cached:    11.7 GB
 Start training network: 2021/05/22 14:06
 
-Using  9800 training samples
-Using  2100 validation samples
+Using  13440 training samples
+Using  720 validation samples
 Epoch 1/10
 ----------
 train Loss: 1.2299 Acc: 0.5753

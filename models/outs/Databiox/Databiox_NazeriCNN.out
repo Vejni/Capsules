@@ -1,0 +1,279 @@
+Mon May 24 09:33:15 BST 2021
+cgpu05.maxwell.local
+
+Currently Loaded Modules:
+  1) slurm/current   2) cudatoolkit-10.1.168
+
+ 
+
+/tmp/slurmd/job789502/slurm_script: line 20: activate: No such file or directory
+Mon May 24 09:33:17 2021       
++-----------------------------------------------------------------------------+
+| NVIDIA-SMI 450.51.05    Driver Version: 450.51.05    CUDA Version: 11.0     |
+|-------------------------------+----------------------+----------------------+
+| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
+|                               |                      |               MIG M. |
+|===============================+======================+======================|
+|   0  GeForce RTX 208...  Off  | 00000000:2F:00.0 Off |                  N/A |
+| 31%   49C    P0    71W / 250W |      0MiB / 11019MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+|   1  GeForce RTX 208...  Off  | 00000000:86:00.0 Off |                  N/A |
+| 37%   48C    P0    41W / 250W |      0MiB / 11019MiB |      0%      Default |
+|                               |                      |                  N/A |
++-------------------------------+----------------------+----------------------+
+                                                                               
++-----------------------------------------------------------------------------+
+| Processes:                                                                  |
+|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
+|        ID   ID                                                   Usage      |
+|=============================================================================|
+|  No running processes found                                                 |
++-----------------------------------------------------------------------------+
+Namespace(augment=False, batch_size=32, checkpoint_path='/uoa/home/u02mv17/Repository/models/checkpoints/', classes=3, data_path='/uoa/home/u02mv17/Repository/data/Graded/patchwise_dataset/', epochs=58, flip=False, input_size=[3, 512, 512], lr=0.001, name='_Databiox_patchwise_original_noaug_', output_size=[3, 64, 64], predefined_stats=True, workers=4) Namespace(arch=[64, 16, 16, 8], augment=True, batch_size=32, checkpoint_path='/uoa/home/u02mv17/Repository/models/checkpoints/', classes=3, data_path='/uoa/home/u02mv17/Repository/data/Graded/imagewise_dataset/', epochs=10, flip=False, input_size=[3, 64, 64], lam_recon=0.392, lr=0.001, lr_decay=0.9, name='_Databiox_imagewise_NazeriCNN_', output_size=[3, 64, 64], pose_dim=4, predefined_stats=True, routings=3, workers=4)
+PatchWiseModel(
+  (features): Sequential(
+    (0): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (4): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+    (6): Conv2d(16, 16, kernel_size=(2, 2), stride=(2, 2))
+    (7): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (8): ReLU(inplace=True)
+    (9): Conv2d(16, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (10): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): ReLU(inplace=True)
+    (12): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (13): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (14): ReLU(inplace=True)
+    (15): Conv2d(32, 32, kernel_size=(2, 2), stride=(2, 2))
+    (16): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (17): ReLU(inplace=True)
+    (18): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (19): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (20): ReLU(inplace=True)
+    (21): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (22): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (23): ReLU(inplace=True)
+    (24): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+    (25): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (26): ReLU(inplace=True)
+    (27): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (28): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (29): ReLU(inplace=True)
+    (30): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (31): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (32): ReLU(inplace=True)
+    (33): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (34): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (35): ReLU(inplace=True)
+    (36): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (37): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (38): ReLU(inplace=True)
+    (39): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (40): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (41): ReLU(inplace=True)
+    (42): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (43): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (44): ReLU(inplace=True)
+    (45): Conv2d(256, 3, kernel_size=(1, 1), stride=(1, 1))
+  )
+  (classifier): Sequential(
+    (0): Linear(in_features=12288, out_features=3, bias=True)
+  )
+)
+Parameters: 1978662
+Trainable parameters: 1978662
+Using: cuda
+GeForce RTX 2080 Ti
+Memory Usage:
+Allocated: 0.0 GB
+Cached:    0.0 GB
+Start training network: 2021/05/24 09:33
+
+Using  22575 training samples
+Using  4830 validation samples
+Model loaded, trained for  66 epochs
+Training complete in 0m 0s
+Best Validation Accuracy: 0.000000
+Test Accuracy of the model: 0.64
+Confusion matrix
+ tensor([[ 650.,  288.,  182.],
+        [ 382., 1529.,  259.],
+        [ 212.,  417.,  946.]])
+Class 0
+TP 650.0, TN 3151.0, FP 594.0, FN 470.0
+Sensitivity 0.58, Specificity 0.84, F1 0.55, Accuracy 0.78
+Class 1
+TP 1529.0, TN 1990.0, FP 705.0, FN 641.0
+Sensitivity 0.70, Specificity 0.74, F1 0.69, Accuracy 0.72
+Class 2
+TP 946.0, TN 2849.0, FP 441.0, FN 629.0
+Sensitivity 0.60, Specificity 0.87, F1 0.64, Accuracy 0.78
+Training Accuracy of the model: 0.87
+Model saved: /uoa/home/u02mv17/Repository/models/_Databiox_patchwise_original_noaug__Databiox_patchwise_original_noaug_2021-05-24_09-33.ckpt
+NazeriCNN(
+  (patch_wise_model): PatchWiseModel(
+    (features): Sequential(
+      (0): Conv2d(3, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (1): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (2): ReLU(inplace=True)
+      (3): Conv2d(16, 16, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (4): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (5): ReLU(inplace=True)
+      (6): Conv2d(16, 16, kernel_size=(2, 2), stride=(2, 2))
+      (7): BatchNorm2d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (8): ReLU(inplace=True)
+      (9): Conv2d(16, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (10): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (11): ReLU(inplace=True)
+      (12): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (13): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (14): ReLU(inplace=True)
+      (15): Conv2d(32, 32, kernel_size=(2, 2), stride=(2, 2))
+      (16): BatchNorm2d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (17): ReLU(inplace=True)
+      (18): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (19): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (20): ReLU(inplace=True)
+      (21): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (22): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (23): ReLU(inplace=True)
+      (24): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+      (25): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (26): ReLU(inplace=True)
+      (27): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (28): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (29): ReLU(inplace=True)
+      (30): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (31): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (32): ReLU(inplace=True)
+      (33): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (34): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (35): ReLU(inplace=True)
+      (36): Conv2d(128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (37): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (38): ReLU(inplace=True)
+      (39): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (40): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (41): ReLU(inplace=True)
+      (42): Conv2d(256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      (43): BatchNorm2d(256, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+      (44): ReLU(inplace=True)
+      (45): Conv2d(256, 3, kernel_size=(1, 1), stride=(1, 1))
+    )
+    (classifier): Sequential(
+      (0): Linear(in_features=12288, out_features=3, bias=True)
+    )
+  )
+  (features): Sequential(
+    (0): Conv2d(3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (1): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): ReLU(inplace=True)
+    (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (4): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (5): ReLU(inplace=True)
+    (6): Conv2d(64, 64, kernel_size=(2, 2), stride=(2, 2))
+    (7): BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (8): ReLU(inplace=True)
+    (9): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (10): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (11): ReLU(inplace=True)
+    (12): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    (13): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (14): ReLU(inplace=True)
+    (15): Conv2d(128, 128, kernel_size=(2, 2), stride=(2, 2))
+    (16): BatchNorm2d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (17): ReLU(inplace=True)
+    (18): Conv2d(128, 1, kernel_size=(1, 1), stride=(1, 1))
+  )
+  (classifier): Sequential(
+    (0): Linear(in_features=256, out_features=128, bias=True)
+    (1): ReLU(inplace=True)
+    (2): Dropout(p=0.5, inplace=False)
+    (3): Linear(in_features=128, out_features=128, bias=True)
+    (4): ReLU(inplace=True)
+    (5): Dropout(p=0.5, inplace=False)
+    (6): Linear(in_features=128, out_features=64, bias=True)
+    (7): ReLU(inplace=True)
+    (8): Dropout(p=0.5, inplace=False)
+    (9): Linear(in_features=64, out_features=3, bias=True)
+  )
+)
+Parameters: 2380074
+Trainable parameters: 2380074
+Using: cuda
+GeForce RTX 2080 Ti
+Memory Usage:
+Allocated: 0.0 GB
+Cached:    4.1 GB
+Start training network: 2021/05/24 09:42
+
+Using  30960 training samples
+Using  1656 validation samples
+Epoch 1/10
+----------
+train Loss: 0.9394 Acc: 0.5588
+val Loss: 1.0068 Acc: 0.5145
+Epoch 2/10
+----------
+train Loss: 0.8606 Acc: 0.6278
+val Loss: 1.3318 Acc: 0.4595
+Epoch 3/10
+----------
+train Loss: 0.8300 Acc: 0.6409
+val Loss: 1.0209 Acc: 0.5012
+Epoch 4/10
+----------
+train Loss: 0.8046 Acc: 0.6565
+val Loss: 1.0825 Acc: 0.4976
+Epoch 5/10
+----------
+train Loss: 0.7808 Acc: 0.6714
+val Loss: 1.0782 Acc: 0.5091
+Epoch 6/10
+----------
+train Loss: 0.7705 Acc: 0.6752
+val Loss: 1.0303 Acc: 0.5332
+Epoch 7/10
+----------
+train Loss: 0.7646 Acc: 0.6781
+val Loss: 1.0567 Acc: 0.5030
+Epoch 8/10
+----------
+train Loss: 0.7336 Acc: 0.6916
+val Loss: 1.0265 Acc: 0.5350
+Epoch 9/10
+----------
+train Loss: 0.7268 Acc: 0.6952
+val Loss: 1.0795 Acc: 0.5296
+Epoch 10/10
+----------
+train Loss: 0.7193 Acc: 0.7015
+val Loss: 1.0203 Acc: 0.5248
+Training complete in 349m 48s
+Best Validation Accuracy: 0.535024
+Test Accuracy of the model: 0.58
+Average Confidence: 77.16
+Test Accuracy of the model on with majority voting: 0.63
+Test Accuracy of the model on with sum voting: 0.63
+Test Accuracy of the model on with max voting: 0.65
+Confusion matrix
+ tensor([[233.,  54.,  97.],
+        [169., 383., 192.],
+        [ 93.,  93., 354.]])
+Class 0
+TP 233.0, TN 1022.0, FP 262.0, FN 151.0
+Sensitivity 0.61, Specificity 0.80, F1 0.53, Accuracy 0.75
+Class 1
+TP 383.0, TN 777.0, FP 147.0, FN 361.0
+Sensitivity 0.51, Specificity 0.84, F1 0.60, Accuracy 0.70
+Class 2
+TP 354.0, TN 839.0, FP 289.0, FN 186.0
+Sensitivity 0.66, Specificity 0.74, F1 0.60, Accuracy 0.72
+Training Accuracy of the model: 0.72
+Model saved: /uoa/home/u02mv17/Repository/models/_Databiox_imagewise_NazeriCNN__Databiox_imagewise_NazeriCNN_2021-05-24_09-42.ckpt
+Mon May 24 15:35:17 BST 2021
